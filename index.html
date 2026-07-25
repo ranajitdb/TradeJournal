@@ -669,8 +669,10 @@
     const STORAGE_KEY = "tradelog_etrade_data";
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
     const SESSION_TOKEN_STORAGE = "tradelog_session_token";
-    const IDEAS_SESSION_KEY = "tradelog_ideas_session";
-    const WATCHLISTS_SESSION_KEY = "tradelog_watchlists_session";
+    const IDEAS_CACHE_KEY = "tradelog_ideas_cache";
+    const WATCHLISTS_CACHE_KEY = "tradelog_watchlists_cache";
+    let ideasSyncTimer = null;
+    let watchlistsSyncTimer = null;
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzG-W6H_UhkWD6Pu4f6zTLoEqoYTbSMeJfHUTzXGlFn34-5E4I9XyMrOVGuG7NlXG2p/exec";
     const GAS_SHEET_NAME = "TradeLog";
     const DEFAULT_FUTURES_MULTIPLIERS = {
@@ -837,18 +839,66 @@
 
     function loadIdeas() {
       try {
-        const raw = sessionStorage.getItem(IDEAS_SESSION_KEY);
+        const raw = localStorage.getItem(IDEAS_CACHE_KEY);
         ideas = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(ideas)) ideas = [];
-      } catch (err) {
-        ideas = [];
-      }
-      if (selectedIdeaId && ideas.some((idea) => idea.id === selectedIdeaId)) return;
+      } catch (_) { ideas = []; }
+      if (selectedIdeaId && ideas.some((i) => i.id === selectedIdeaId)) return;
       selectedIdeaId = ideas.length ? ideas[0].id : null;
     }
 
+    async function loadIdeasFromGAS(options = {}) {
+      const { silent = true } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      try {
+        const url = `${GAS_WEB_APP_URL}?action=loadIdeas&sessionToken=${encodeURIComponent(token)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Load ideas failed");
+        ideas = Array.isArray(data.ideas) ? data.ideas : [];
+        localStorage.setItem(IDEAS_CACHE_KEY, JSON.stringify(ideas));
+        if (selectedIdeaId && !ideas.some((i) => i.id === selectedIdeaId)) selectedIdeaId = ideas.length ? ideas[0].id : null;
+        if (!selectedIdeaId && ideas.length) selectedIdeaId = ideas[0].id;
+        renderIdeasWorkspace();
+        if (!silent) showToast("ok", `Loaded ${ideas.length} idea(s).`);
+      } catch (err) {
+        if (!silent) showToast("error", `Ideas load failed: ${err.message}`);
+      }
+    }
+
     function saveIdeas() {
-      sessionStorage.setItem(IDEAS_SESSION_KEY, JSON.stringify(ideas));
+      localStorage.setItem(IDEAS_CACHE_KEY, JSON.stringify(ideas));
+      scheduleIdeasSync();
+    }
+
+    function scheduleIdeasSync() {
+      if (ideasSyncTimer) clearTimeout(ideasSyncTimer);
+      ideasSyncTimer = setTimeout(() => syncIdeasToGAS({ silent: true }), 800);
+    }
+
+    async function syncIdeasToGAS(options = {}) {
+      const { silent = false } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      const payload = {
+        action: "replaceAllIdeas",
+        sessionToken: token,
+        ideas: ideas.map((t) => ({
+          id: t.id, title: t.title || "", category: t.category || "",
+          status: t.status || "", conviction: t.conviction || "",
+          tags: t.tags || "", note: (t.thesis || "") + (t.notes ? "\n" + t.notes : ""),
+          pinned: Boolean(t.pinned), createdAt: t.createdAt || "", updatedAt: t.updatedAt || ""
+        }))
+      };
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, { method: "POST", body: JSON.stringify(payload), headers: { "Content-Type": "text/plain;charset=utf-8" } });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Ideas sync failed");
+        if (!silent) showToast("ok", `Ideas saved (${ideas.length}).`);
+      } catch (err) {
+        if (!silent) showToast("error", `Ideas sync failed: ${err.message}`);
+      }
     }
 
     function getSelectedIdea() {
@@ -1012,18 +1062,78 @@
 
     function loadWatchlists() {
       try {
-        const raw = sessionStorage.getItem(WATCHLISTS_SESSION_KEY);
+        const raw = localStorage.getItem(WATCHLISTS_CACHE_KEY);
         watchlists = raw ? JSON.parse(raw) : [];
         if (!Array.isArray(watchlists)) watchlists = [];
-      } catch (err) {
-        watchlists = [];
-      }
-      if (selectedWatchlistId && watchlists.some((list) => list.id === selectedWatchlistId)) return;
+      } catch (_) { watchlists = []; }
+      if (selectedWatchlistId && watchlists.some((l) => l.id === selectedWatchlistId)) return;
       selectedWatchlistId = watchlists.length ? watchlists[0].id : null;
     }
 
+    async function loadWatchlistsFromGAS(options = {}) {
+      const { silent = true } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      try {
+        const url = `${GAS_WEB_APP_URL}?action=loadWatchlists&sessionToken=${encodeURIComponent(token)}`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Load watchlists failed");
+        const wls  = Array.isArray(data.watchlists) ? data.watchlists : [];
+        const flat = Array.isArray(data.items) ? data.items : [];
+        const byList = {};
+        flat.forEach((item) => {
+          if (!byList[item.watchlistId]) byList[item.watchlistId] = [];
+          byList[item.watchlistId].push(item);
+        });
+        watchlists = wls.map((wl) => ({ ...wl, items: byList[wl.id] || [] }));
+        localStorage.setItem(WATCHLISTS_CACHE_KEY, JSON.stringify(watchlists));
+        if (selectedWatchlistId && !watchlists.some((l) => l.id === selectedWatchlistId)) selectedWatchlistId = watchlists.length ? watchlists[0].id : null;
+        if (!selectedWatchlistId && watchlists.length) selectedWatchlistId = watchlists[0].id;
+        renderWatchlistsWorkspace();
+        if (!silent) showToast("ok", `Loaded ${watchlists.length} watch list(s).`);
+      } catch (err) {
+        if (!silent) showToast("error", `Watchlists load failed: ${err.message}`);
+      }
+    }
+
     function saveWatchlists() {
-      sessionStorage.setItem(WATCHLISTS_SESSION_KEY, JSON.stringify(watchlists));
+      localStorage.setItem(WATCHLISTS_CACHE_KEY, JSON.stringify(watchlists));
+      scheduleWatchlistsSync();
+    }
+
+    function scheduleWatchlistsSync() {
+      if (watchlistsSyncTimer) clearTimeout(watchlistsSyncTimer);
+      watchlistsSyncTimer = setTimeout(() => syncWatchlistsToGAS({ silent: true }), 800);
+    }
+
+    async function syncWatchlistsToGAS(options = {}) {
+      const { silent = false } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      const listsPayload = watchlists.map((wl) => ({
+        id: wl.id, name: wl.name || "", theme: wl.theme || "",
+        pinned: Boolean(wl.pinned), createdAt: wl.createdAt || "", updatedAt: wl.updatedAt || ""
+      }));
+      const itemsPayload = watchlists.flatMap((wl) =>
+        (wl.items || []).map((item) => ({
+          id: item.id, watchlistId: wl.id, symbol: item.symbol || "",
+          note: item.note || "", createdAt: item.createdAt || item.updatedAt || "",
+          updatedAt: item.updatedAt || ""
+        }))
+      );
+      try {
+        const res = await fetch(GAS_WEB_APP_URL, {
+          method: "POST",
+          body: JSON.stringify({ action: "replaceAllWatchlists", sessionToken: token, watchlists: listsPayload, items: itemsPayload }),
+          headers: { "Content-Type": "text/plain;charset=utf-8" }
+        });
+        const data = await res.json();
+        if (!data.ok) throw new Error(data.error || "Watchlists sync failed");
+        if (!silent) showToast("ok", `Watch lists saved (${watchlists.length} lists, ${itemsPayload.length} symbols).`);
+      } catch (err) {
+        if (!silent) showToast("error", `Watch lists sync failed: ${err.message}`);
+      }
     }
 
     function getSelectedWatchlist() {
@@ -1180,8 +1290,10 @@
       selected.items = Array.isArray(selected.items) ? selected.items : [];
       selected.items.unshift({
         id: uid(),
+        watchlistId: selected.id,
         symbol,
         note,
+        createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
       selected.updatedAt = new Date().toISOString();
@@ -2721,6 +2833,8 @@
       }
       unlockApp();
       loadTrades();
+      loadIdeas();
+      loadWatchlists();
       refreshAll();
       renderIdeasWorkspace();
       renderWatchlistsWorkspace();
@@ -2756,14 +2870,14 @@
           return;
         }
       }
+      await loadIdeasFromGAS({ silent: true });
+      await loadWatchlistsFromGAS({ silent: true });
       if (cloudSyncIntervalId) clearInterval(cloudSyncIntervalId);
       cloudSyncIntervalId = setInterval(() => {
         if (hasPendingSync()) syncToGoogleSheet({ silent: true });
       }, 15000);
     }
 
-    loadIdeas();
-    loadWatchlists();
     setActiveTab("journal");
     wireEvents();
     wireIdeasEvents();
