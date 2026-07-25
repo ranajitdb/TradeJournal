@@ -114,7 +114,10 @@
 
     <section class="grid grid-cols-1 gap-6">
       <div class="bg-white border rounded-lg p-4">
-        <h2 class="font-semibold mb-3">Closed Positions</h2>
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">Closed Positions</h2>
+          <button id="exportClosedCsvBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Export CSV</button>
+        </div>
         <div class="overflow-auto max-h-[320px]">
           <table class="w-full text-sm">
             <thead class="sticky top-0 bg-slate-100">
@@ -140,6 +143,7 @@
         <div class="flex items-center justify-between mb-3">
           <h2 class="font-semibold">Open Positions</h2>
           <div class="flex items-center gap-2">
+            <button id="exportOpenCsvBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Export CSV</button>
             <button id="expandAllOpenBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Expand all</button>
             <button id="collapseAllOpenBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Collapse all</button>
           </div>
@@ -1664,6 +1668,62 @@
       showToast("ok", "CSV export generated (E*TRADE-compatible format).");
     }
 
+    function exportClosedPositionsCsv() {
+      const rows = [
+        ["Symbol", "AssetType", "Qty", "EntryDate", "EntryPrice", "ExitDate", "ExitPrice", "DaysHeld", "Multiplier", "PnL"]
+      ];
+      const closedRows = derived.pairs.slice().sort((a, b) => {
+        const { key, dir } = sortState.closed;
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        if (key === "exitDate") return compareValues(a.exitDate, b.exitDate, dir, "date");
+        return compareValues(a.exitDate, b.exitDate, "desc", "date");
+      });
+      closedRows.forEach((p) => {
+        const days = Math.max(0, Math.round((new Date(p.exitDate) - new Date(p.entryDate)) / (1000 * 60 * 60 * 24)));
+        rows.push([
+          p.symbol,
+          p.assetType,
+          p.qty,
+          p.entryDate,
+          Number(p.entryPrice).toFixed(4),
+          p.exitDate,
+          Number(p.exitPrice).toFixed(4),
+          days,
+          p.multiplier,
+          Number(p.pnl || 0).toFixed(2)
+        ]);
+      });
+      const csv = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+      downloadBlob(csv, "text/csv;charset=utf-8;", `closed-positions-${Date.now()}.csv`);
+      showToast("ok", "Closed positions CSV exported.");
+    }
+
+    function exportOpenPositionsCsv() {
+      const rows = [
+        ["Symbol", "AssetType", "Side", "EntryDate", "OpenQty", "EntryPrice", "Multiplier"]
+      ];
+      const openRows = derived.openPositions.slice().sort((a, b) => {
+        const { key, dir } = sortState.open;
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        if (key === "entryDate") return compareValues(a.entryDate, b.entryDate, dir, "date");
+        return compareValues(a.entryDate, b.entryDate, "desc", "date");
+      });
+      openRows.forEach((p) => {
+        rows.push([
+          p.symbol,
+          p.assetType,
+          p.side,
+          p.entryDate,
+          p.qty,
+          Number(p.entryPrice).toFixed(4),
+          p.multiplier
+        ]);
+      });
+      const csv = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+      downloadBlob(csv, "text/csv;charset=utf-8;", `open-positions-${Date.now()}.csv`);
+      showToast("ok", "Open positions CSV exported.");
+    }
+
     function exportJson() {
       const payload = JSON.stringify({ exportedAt: new Date().toISOString(), trades }, null, 2);
       downloadBlob(payload, "application/json", `trade-log-backup-${Date.now()}.json`);
@@ -1805,6 +1865,8 @@
       });
 
       document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+      document.getElementById("exportClosedCsvBtn").addEventListener("click", exportClosedPositionsCsv);
+      document.getElementById("exportOpenCsvBtn").addEventListener("click", exportOpenPositionsCsv);
       document.getElementById("exportJsonBtn").addEventListener("click", exportJson);
       document.getElementById("restoreJsonBtn").addEventListener("click", () => document.getElementById("restoreJsonInput").click());
       document.getElementById("restoreJsonInput").addEventListener("change", (e) => {
