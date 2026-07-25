@@ -1791,9 +1791,14 @@
     async function initializeCloudSync() {
       const key = ensureGoogleApiKey();
       if (!key) {
+        trades = [];
+        selectedTradeIds.clear();
+        refreshAll();
         showToast("error", "Google API key is required for cloud sync.");
         return;
       }
+      loadTrades();
+      refreshAll();
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
         if (!syncResult || !syncResult.ok) {
@@ -1809,9 +1814,7 @@
       }, 15000);
     }
 
-    loadTrades();
     wireEvents();
-    refreshAll();
     initializeCloudSync();
   </script>
 </body>
