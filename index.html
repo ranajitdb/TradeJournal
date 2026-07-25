@@ -9,24 +9,19 @@
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900">
   <div id="appRoot" class="hidden max-w-7xl mx-auto p-4 md:p-6">
-    <header class="mb-6">
-      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <header class="mb-4">
+      <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 class="text-3xl font-bold">Trade Journal Portal</h1>
           <p class="text-slate-600">Stocks, options, and futures tracking with E*TRADE import.</p>
         </div>
         <div class="flex flex-col items-stretch md:items-end gap-2">
-          <div id="journalHeaderActions" class="flex flex-wrap gap-2">
-            <button id="openAddTradeBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Add Trade</button>
-            <button id="openImportBtn" class="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">Import E*TRADE CSV</button>
-            <button id="analyzeTradesBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Trade Analysis</button>
-            <button id="exportCsvBtn" class="px-3 py-2 text-sm rounded bg-slate-800 text-white hover:bg-slate-900">Export CSV</button>
-            <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
-            <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
-            <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
-            <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
-          </div>
-          <div class="flex justify-end">
+          <div class="flex items-center gap-3">
+            <div class="inline-flex rounded-lg border bg-white p-1">
+              <button id="journalTabBtn" class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white">Journal</button>
+              <button id="ideasTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Ideas & Notes</button>
+              <button id="watchlistsTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Watch Lists</button>
+            </div>
             <button id="logoutLink" type="button" title="Logout" aria-label="Logout" class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -39,15 +34,17 @@
       </div>
     </header>
 
-    <section class="mb-6">
-      <div class="inline-flex rounded-lg border bg-white p-1">
-        <button id="journalTabBtn" class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white">Journal</button>
-        <button id="ideasTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Ideas & Notes</button>
-        <button id="watchlistsTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Watch Lists</button>
-      </div>
-    </section>
-
     <div id="journalTab" class="space-y-6">
+    <div class="flex flex-wrap gap-2">
+      <button id="openAddTradeBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Add Trade</button>
+      <button id="openImportBtn" class="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">Import E*TRADE CSV</button>
+      <button id="analyzeTradesBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Trade Analysis</button>
+      <button id="exportCsvBtn" class="px-3 py-2 text-sm rounded bg-slate-800 text-white hover:bg-slate-900">Export CSV</button>
+      <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
+      <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
+      <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
+      <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
+    </div>
     <section class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
       <div class="bg-white rounded-lg border p-3">
         <div class="text-xs text-slate-500">Total P&L</div>
@@ -708,7 +705,7 @@
 
     const el = {
       appRoot: document.getElementById("appRoot"),
-      journalHeaderActions: document.getElementById("journalHeaderActions"),
+      journalHeaderActions: null, // now lives inside journalTab, no toggle needed
       journalTab: document.getElementById("journalTab"),
       ideasTab: document.getElementById("ideasTab"),
       watchlistsTab: document.getElementById("watchlistsTab"),
@@ -1153,7 +1150,6 @@
       el.journalTab.classList.toggle("hidden", !isJournal);
       el.ideasTab.classList.toggle("hidden", !isIdeas);
       el.watchlistsTab.classList.toggle("hidden", !isWatchlists);
-      el.journalHeaderActions.classList.toggle("hidden", !isJournal);
       el.journalTabBtn.className = `px-4 py-2 text-sm rounded-md ${isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
       el.ideasTabBtn.className = `px-4 py-2 text-sm rounded-md ${isIdeas ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
       el.watchlistsTabBtn.className = `px-4 py-2 text-sm rounded-md ${isWatchlists ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
