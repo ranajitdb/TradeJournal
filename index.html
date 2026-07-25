@@ -43,6 +43,7 @@
       <div class="inline-flex rounded-lg border bg-white p-1">
         <button id="journalTabBtn" class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white">Journal</button>
         <button id="ideasTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Ideas & Notes</button>
+        <button id="watchlistsTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Watch Lists</button>
       </div>
     </section>
 
@@ -395,6 +396,118 @@
         </div>
       </section>
     </section>
+
+    <section id="watchlistsTab" class="hidden space-y-6">
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Watch Lists</div>
+          <div id="watchlistStatTotal" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Total Symbols</div>
+          <div id="watchlistStatSymbols" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Pinned Lists</div>
+          <div id="watchlistStatPinned" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Active List Items</div>
+          <div id="watchlistStatSelected" class="text-xl font-semibold">0</div>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-wrap gap-2">
+            <button id="newWatchlistBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">New Watch List</button>
+            <button id="deleteWatchlistBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Delete Watch List</button>
+          </div>
+          <input id="watchlistSearchInput" type="text" placeholder="Search watch lists or symbols" class="border rounded px-2 py-2 text-sm w-full md:w-72" />
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-6">
+        <div class="bg-white rounded-lg border p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold">Lists</h2>
+            <span id="watchlistCountBadge" class="text-xs px-2 py-1 rounded bg-slate-100">0 lists</span>
+          </div>
+          <div id="watchlistList" class="space-y-2 max-h-[760px] overflow-auto"></div>
+        </div>
+
+        <div class="bg-white rounded-lg border p-4 space-y-4">
+          <div id="watchlistEmptyState" class="text-sm text-slate-500 py-16 text-center">
+            Create a watch list to track symbols and store quick selection notes.
+          </div>
+          <div id="watchlistEditor" class="hidden space-y-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="watchlistEditorTitle" class="font-semibold text-lg">Watch List</h2>
+                <p class="text-xs text-slate-500">Session-only for now. Lists stay in this browser session until you close it.</p>
+              </div>
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                <input id="watchlistPinned" type="checkbox" class="rounded" />
+                Pin
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-500">Watch List Name</label>
+                <input id="watchlistName" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Theme / Focus</label>
+                <input id="watchlistTheme" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">List Notes</label>
+              <textarea id="watchlistNotes" rows="3" class="w-full border rounded px-2 py-2 text-sm"></textarea>
+            </div>
+
+            <div class="border rounded-lg p-4 bg-slate-50 space-y-3">
+              <div class="font-medium text-sm">Add Symbol</div>
+              <div class="grid grid-cols-1 md:grid-cols-[140px,1fr,120px] gap-3">
+                <div>
+                  <label class="text-xs text-slate-500">Symbol</label>
+                  <input id="watchItemSymbolInput" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+                </div>
+                <div>
+                  <label class="text-xs text-slate-500">Quick Note</label>
+                  <input id="watchItemNoteInput" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+                </div>
+                <div class="flex items-end">
+                  <button id="addWatchItemBtn" class="w-full px-3 py-2 text-sm rounded bg-slate-900 text-white hover:bg-slate-950">Add Symbol</button>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center justify-between mb-3">
+                <h3 class="font-medium">Symbols in Watch List</h3>
+                <span id="watchlistSymbolCount" class="text-xs px-2 py-1 rounded bg-slate-100">0 symbols</span>
+              </div>
+              <div class="overflow-auto border rounded-lg">
+                <table class="w-full text-sm">
+                  <thead class="bg-slate-100">
+                    <tr>
+                      <th class="p-2 text-left">Symbol</th>
+                      <th class="p-2 text-left">Note</th>
+                      <th class="p-2 text-left">Updated</th>
+                      <th class="p-2 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="watchlistItemsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
   </div>
 
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
@@ -562,6 +675,7 @@
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
     const SESSION_TOKEN_STORAGE = "tradelog_session_token";
     const IDEAS_SESSION_KEY = "tradelog_ideas_session";
+    const WATCHLISTS_SESSION_KEY = "tradelog_watchlists_session";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzG-W6H_UhkWD6Pu4f6zTLoEqoYTbSMeJfHUTzXGlFn34-5E4I9XyMrOVGuG7NlXG2p/exec";
     const GAS_SHEET_NAME = "TradeLog";
     const DEFAULT_FUTURES_MULTIPLIERS = {
@@ -592,14 +706,18 @@
     let activeTab = "journal";
     let ideas = [];
     let selectedIdeaId = null;
+    let watchlists = [];
+    let selectedWatchlistId = null;
 
     const el = {
       appRoot: document.getElementById("appRoot"),
       journalHeaderActions: document.getElementById("journalHeaderActions"),
       journalTab: document.getElementById("journalTab"),
       ideasTab: document.getElementById("ideasTab"),
+      watchlistsTab: document.getElementById("watchlistsTab"),
       journalTabBtn: document.getElementById("journalTabBtn"),
       ideasTabBtn: document.getElementById("ideasTabBtn"),
+      watchlistsTabBtn: document.getElementById("watchlistsTabBtn"),
       tradeTableBody: document.getElementById("tradeTableBody"),
       closedPairTableBody: document.getElementById("closedPairTableBody"),
       openPairTableBody: document.getElementById("openPairTableBody"),
@@ -638,7 +756,18 @@
       ideaForm: document.getElementById("ideaForm"),
       ideaEditorTitle: document.getElementById("ideaEditorTitle"),
       ideaSearchInput: document.getElementById("ideaSearchInput"),
-      ideaStatusFilter: document.getElementById("ideaStatusFilter")
+      ideaStatusFilter: document.getElementById("ideaStatusFilter"),
+      watchlistStatTotal: document.getElementById("watchlistStatTotal"),
+      watchlistStatSymbols: document.getElementById("watchlistStatSymbols"),
+      watchlistStatPinned: document.getElementById("watchlistStatPinned"),
+      watchlistStatSelected: document.getElementById("watchlistStatSelected"),
+      watchlistCountBadge: document.getElementById("watchlistCountBadge"),
+      watchlistList: document.getElementById("watchlistList"),
+      watchlistEmptyState: document.getElementById("watchlistEmptyState"),
+      watchlistEditor: document.getElementById("watchlistEditor"),
+      watchlistEditorTitle: document.getElementById("watchlistEditorTitle"),
+      watchlistSearchInput: document.getElementById("watchlistSearchInput"),
+      watchlistItemsBody: document.getElementById("watchlistItemsBody")
     };
 
     function uid() {
@@ -742,17 +871,6 @@
       if (status === "Closed") return "bg-slate-200 text-slate-700";
       if (status === "Archived") return "bg-amber-100 text-amber-700";
       return "bg-violet-100 text-violet-700";
-    }
-
-    function setActiveTab(tab) {
-      activeTab = tab === "ideas" ? "ideas" : "journal";
-      const isJournal = activeTab === "journal";
-      el.journalTab.classList.toggle("hidden", !isJournal);
-      el.ideasTab.classList.toggle("hidden", isJournal);
-      el.journalHeaderActions.classList.toggle("hidden", !isJournal);
-      el.journalTabBtn.className = `px-4 py-2 text-sm rounded-md ${isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
-      el.ideasTabBtn.className = `px-4 py-2 text-sm rounded-md ${!isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
-      if (!isJournal) renderIdeasWorkspace();
     }
 
     function renderIdeasWorkspace() {
@@ -881,6 +999,238 @@
       saveIdeas();
       el.ideaEditorTitle.textContent = selectedIdea.title || "Trade Idea";
       if (rerender) renderIdeasWorkspace();
+    }
+
+    function createWatchlistTemplate() {
+      const now = new Date().toISOString();
+      return {
+        id: uid(),
+        name: "",
+        theme: "",
+        notes: "",
+        pinned: false,
+        items: [],
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+
+    function loadWatchlists() {
+      try {
+        const raw = sessionStorage.getItem(WATCHLISTS_SESSION_KEY);
+        watchlists = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(watchlists)) watchlists = [];
+      } catch (err) {
+        watchlists = [];
+      }
+      if (selectedWatchlistId && watchlists.some((list) => list.id === selectedWatchlistId)) return;
+      selectedWatchlistId = watchlists.length ? watchlists[0].id : null;
+    }
+
+    function saveWatchlists() {
+      sessionStorage.setItem(WATCHLISTS_SESSION_KEY, JSON.stringify(watchlists));
+    }
+
+    function getSelectedWatchlist() {
+      return watchlists.find((list) => list.id === selectedWatchlistId) || null;
+    }
+
+    function formatWatchlistDate(iso) {
+      if (!iso) return "-";
+      return new Date(iso).toLocaleDateString();
+    }
+
+    function setActiveTab(tab) {
+      activeTab = ["journal", "ideas", "watchlists"].includes(tab) ? tab : "journal";
+      const isJournal = activeTab === "journal";
+      const isIdeas = activeTab === "ideas";
+      const isWatchlists = activeTab === "watchlists";
+      el.journalTab.classList.toggle("hidden", !isJournal);
+      el.ideasTab.classList.toggle("hidden", !isIdeas);
+      el.watchlistsTab.classList.toggle("hidden", !isWatchlists);
+      el.journalHeaderActions.classList.toggle("hidden", !isJournal);
+      el.journalTabBtn.className = `px-4 py-2 text-sm rounded-md ${isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      el.ideasTabBtn.className = `px-4 py-2 text-sm rounded-md ${isIdeas ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      el.watchlistsTabBtn.className = `px-4 py-2 text-sm rounded-md ${isWatchlists ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      if (isIdeas) renderIdeasWorkspace();
+      if (isWatchlists) renderWatchlistsWorkspace();
+    }
+
+    function renderWatchlistsWorkspace() {
+      const search = String(el.watchlistSearchInput.value || "").trim().toLowerCase();
+      const filteredLists = watchlists
+        .filter((list) => {
+          const itemSymbols = (list.items || []).map((item) => `${item.symbol} ${item.note || ""}`).join(" ");
+          const haystack = `${list.name} ${list.theme} ${list.notes} ${itemSymbols}`.toLowerCase();
+          return !search || haystack.includes(search);
+        })
+        .sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+        });
+
+      const totalSymbols = watchlists.reduce((sum, list) => sum + ((list.items || []).length), 0);
+      el.watchlistStatTotal.textContent = String(watchlists.length);
+      el.watchlistStatSymbols.textContent = String(totalSymbols);
+      el.watchlistStatPinned.textContent = String(watchlists.filter((list) => list.pinned).length);
+      el.watchlistCountBadge.textContent = `${filteredLists.length} lists`;
+
+      if (!filteredLists.some((list) => list.id === selectedWatchlistId)) {
+        selectedWatchlistId = filteredLists.length ? filteredLists[0].id : null;
+      }
+      const selectedList = getSelectedWatchlist();
+      el.watchlistStatSelected.textContent = String(selectedList ? (selectedList.items || []).length : 0);
+
+      el.watchlistList.innerHTML = filteredLists.length ? filteredLists.map((list) => {
+        const selected = list.id === selectedWatchlistId;
+        return `
+          <button type="button" onclick="selectWatchlist('${list.id}')" class="w-full text-left border rounded-lg p-3 transition ${selected ? "border-slate-900 bg-slate-50" : "hover:bg-slate-50"}">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-medium text-sm">${list.name || "Untitled watch list"}</div>
+                <div class="text-xs text-slate-500 mt-1">${list.theme || "No theme set"}</div>
+              </div>
+              <div class="text-right">
+                ${list.pinned ? '<div class="text-amber-500 text-xs">PINNED</div>' : ""}
+                <div class="text-[11px] text-slate-400">${formatWatchlistDate(list.updatedAt)}</div>
+              </div>
+            </div>
+            <div class="mt-3 text-[11px] text-slate-500">${(list.items || []).length} symbol(s)</div>
+          </button>
+        `;
+      }).join("") : `<div class="text-sm text-slate-500 py-6 text-center">No watch lists match the current search.</div>`;
+
+      const selected = getSelectedWatchlist();
+      if (!selected) {
+        el.watchlistEmptyState.classList.remove("hidden");
+        el.watchlistEditor.classList.add("hidden");
+        return;
+      }
+
+      el.watchlistEmptyState.classList.add("hidden");
+      el.watchlistEditor.classList.remove("hidden");
+      el.watchlistEditorTitle.textContent = selected.name || "Watch List";
+      document.getElementById("watchlistName").value = selected.name || "";
+      document.getElementById("watchlistTheme").value = selected.theme || "";
+      document.getElementById("watchlistNotes").value = selected.notes || "";
+      document.getElementById("watchlistPinned").checked = Boolean(selected.pinned);
+      document.getElementById("watchlistSymbolCount").textContent = `${(selected.items || []).length} symbols`;
+
+      el.watchlistItemsBody.innerHTML = (selected.items || []).length ? selected.items.map((item) => `
+        <tr class="border-b" data-watch-item-id="${item.id}">
+          <td class="p-2 align-top">
+            <input data-watch-item-field="symbol" data-watch-item-id="${item.id}" type="text" value="${escapeHtmlAttr(item.symbol || "")}" class="w-full border rounded px-2 py-1 text-sm" />
+          </td>
+          <td class="p-2 align-top">
+            <textarea data-watch-item-field="note" data-watch-item-id="${item.id}" rows="2" class="w-full border rounded px-2 py-1 text-sm">${escapeHtmlText(item.note || "")}</textarea>
+          </td>
+          <td class="p-2 align-top text-xs text-slate-500">${formatWatchlistDate(item.updatedAt)}</td>
+          <td class="p-2 align-top text-right">
+            <button type="button" class="text-rose-600 hover:text-rose-800 text-xs" onclick="removeWatchlistItem('${item.id}')">Remove</button>
+          </td>
+        </tr>
+      `).join("") : `<tr><td class="p-3 text-slate-500 text-sm" colspan="4">No symbols in this watch list yet.</td></tr>`;
+    }
+
+    function createNewWatchlist() {
+      const list = createWatchlistTemplate();
+      watchlists.unshift(list);
+      selectedWatchlistId = list.id;
+      saveWatchlists();
+      setActiveTab("watchlists");
+      renderWatchlistsWorkspace();
+      document.getElementById("watchlistName").focus();
+    }
+
+    function selectWatchlist(id) {
+      selectedWatchlistId = id;
+      renderWatchlistsWorkspace();
+    }
+    window.selectWatchlist = selectWatchlist;
+
+    function deleteSelectedWatchlist() {
+      const selected = getSelectedWatchlist();
+      if (!selected) return;
+      const ok = confirm(`Delete watch list "${selected.name || "Untitled watch list"}"?`);
+      if (!ok) return;
+      watchlists = watchlists.filter((list) => list.id !== selected.id);
+      selectedWatchlistId = watchlists.length ? watchlists[0].id : null;
+      saveWatchlists();
+      renderWatchlistsWorkspace();
+      showToast("ok", "Watch list deleted.");
+    }
+
+    function syncSelectedWatchlistMeta(rerender = false) {
+      const selected = getSelectedWatchlist();
+      if (!selected) return;
+      selected.name = document.getElementById("watchlistName").value.trim();
+      selected.theme = document.getElementById("watchlistTheme").value.trim();
+      selected.notes = document.getElementById("watchlistNotes").value;
+      selected.pinned = document.getElementById("watchlistPinned").checked;
+      selected.updatedAt = new Date().toISOString();
+      saveWatchlists();
+      el.watchlistEditorTitle.textContent = selected.name || "Watch List";
+      if (rerender) renderWatchlistsWorkspace();
+    }
+
+    function addWatchlistItem() {
+      const selected = getSelectedWatchlist();
+      if (!selected) return;
+      const symbolInput = document.getElementById("watchItemSymbolInput");
+      const noteInput = document.getElementById("watchItemNoteInput");
+      const symbol = String(symbolInput.value || "").trim().toUpperCase();
+      const note = String(noteInput.value || "").trim();
+      if (!symbol) {
+        showToast("error", "Enter a symbol to add to the watch list.");
+        return;
+      }
+      selected.items = Array.isArray(selected.items) ? selected.items : [];
+      selected.items.unshift({
+        id: uid(),
+        symbol,
+        note,
+        updatedAt: new Date().toISOString()
+      });
+      selected.updatedAt = new Date().toISOString();
+      symbolInput.value = "";
+      noteInput.value = "";
+      saveWatchlists();
+      renderWatchlistsWorkspace();
+      showToast("ok", "Symbol added to watch list.");
+    }
+
+    function removeWatchlistItem(id) {
+      const selected = getSelectedWatchlist();
+      if (!selected || !Array.isArray(selected.items)) return;
+      selected.items = selected.items.filter((item) => item.id !== id);
+      selected.updatedAt = new Date().toISOString();
+      saveWatchlists();
+      renderWatchlistsWorkspace();
+      showToast("ok", "Symbol removed from watch list.");
+    }
+    window.removeWatchlistItem = removeWatchlistItem;
+
+    function updateWatchlistItemField(itemId, field, value) {
+      const selected = getSelectedWatchlist();
+      if (!selected || !Array.isArray(selected.items)) return;
+      const item = selected.items.find((entry) => entry.id === itemId);
+      if (!item) return;
+      if (field === "symbol") item.symbol = String(value || "").trim().toUpperCase();
+      if (field === "note") item.note = String(value || "");
+      item.updatedAt = new Date().toISOString();
+      selected.updatedAt = new Date().toISOString();
+      saveWatchlists();
+    }
+
+    function escapeHtmlText(value) {
+      return String(value || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+    }
+
+    function escapeHtmlAttr(value) {
+      return escapeHtmlText(value).replace(/"/g, "&quot;");
     }
 
     async function loginWithCredentials(userId, password) {
@@ -2308,6 +2658,31 @@
       el.ideaForm.addEventListener("change", () => syncSelectedIdeaFromForm(true));
     }
 
+    function wireWatchlistsEvents() {
+      el.watchlistsTabBtn.addEventListener("click", () => setActiveTab("watchlists"));
+      document.getElementById("newWatchlistBtn").addEventListener("click", createNewWatchlist);
+      document.getElementById("deleteWatchlistBtn").addEventListener("click", deleteSelectedWatchlist);
+      el.watchlistSearchInput.addEventListener("input", renderWatchlistsWorkspace);
+      document.getElementById("watchlistName").addEventListener("input", () => syncSelectedWatchlistMeta(false));
+      document.getElementById("watchlistTheme").addEventListener("input", () => syncSelectedWatchlistMeta(false));
+      document.getElementById("watchlistNotes").addEventListener("input", () => syncSelectedWatchlistMeta(false));
+      document.getElementById("watchlistPinned").addEventListener("change", () => syncSelectedWatchlistMeta(true));
+      document.getElementById("addWatchItemBtn").addEventListener("click", addWatchlistItem);
+      el.watchlistItemsBody.addEventListener("input", (e) => {
+        const field = e.target.getAttribute("data-watch-item-field");
+        const itemId = e.target.getAttribute("data-watch-item-id");
+        if (!field || !itemId) return;
+        updateWatchlistItemField(itemId, field, e.target.value);
+      });
+      el.watchlistItemsBody.addEventListener("change", (e) => {
+        const field = e.target.getAttribute("data-watch-item-field");
+        const itemId = e.target.getAttribute("data-watch-item-id");
+        if (!field || !itemId) return;
+        updateWatchlistItemField(itemId, field, e.target.value);
+        renderWatchlistsWorkspace();
+      });
+    }
+
     function wireAuthEvents() {
       const loginForm = document.getElementById("loginForm");
       const loginSubmitBtn = document.getElementById("loginSubmitBtn");
@@ -2356,6 +2731,7 @@
       loadTrades();
       refreshAll();
       renderIdeasWorkspace();
+      renderWatchlistsWorkspace();
       setActiveTab(activeTab);
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
@@ -2395,9 +2771,11 @@
     }
 
     loadIdeas();
+    loadWatchlists();
     setActiveTab("journal");
     wireEvents();
     wireIdeasEvents();
+    wireWatchlistsEvents();
     wireAuthEvents();
     initializeCloudSync();
   </script>
