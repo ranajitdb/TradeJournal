@@ -117,6 +117,10 @@
         <div class="flex items-end">
           <button id="resetFiltersBtn" class="w-full px-3 py-2 text-sm rounded border hover:bg-slate-100">Reset Filters</button>
         </div>
+        <div>
+          <label class="text-xs text-slate-500">Tags</label>
+          <input id="filterTags" type="text" placeholder="earnings, FOMC..." class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
       </div>
     </section>
 
@@ -222,6 +226,8 @@
                 </th>
                 <th class="p-2">Type</th>
                 <th class="p-2">Action</th>
+                <th class="p-2">Strategy</th>
+                <th class="p-2">Tags</th>
                 <th class="p-2 text-right">Qty</th>
                 <th class="p-2 text-right">Price</th>
                 <th class="p-2 text-right">P&L</th>
@@ -239,6 +245,35 @@
       <div class="bg-white border rounded-lg p-4">
         <h2 class="font-semibold mb-3">Equity Curve</h2>
         <canvas id="equityChart" height="240"></canvas>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 mt-6">
+      <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Monthly P&L</h2>
+        <canvas id="monthlyPnlChart" height="220"></canvas>
+      </div>
+      <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">P&L by Day of Week</h2>
+        <canvas id="dowPnlChart" height="220"></canvas>
+      </div>
+    </section>
+
+    <section class="bg-white border rounded-lg p-4 mb-6 mt-6">
+      <h2 class="font-semibold mb-3">Strategy Performance</h2>
+      <div class="overflow-auto max-h-[280px]">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-100">
+            <tr>
+              <th class="p-2 text-left">Strategy</th>
+              <th class="p-2 text-right">Trades</th>
+              <th class="p-2 text-right">Win %</th>
+              <th class="p-2 text-right">Avg P&L</th>
+              <th class="p-2 text-right">Total P&L</th>
+            </tr>
+          </thead>
+          <tbody id="strategyTableBody"></tbody>
+        </table>
       </div>
     </section>
     </div>
@@ -590,6 +625,22 @@
           <label class="text-xs text-slate-500">Description</label>
           <input name="description" type="text" class="w-full border rounded px-2 py-2 text-sm" />
         </div>
+        <div>
+          <label class="text-xs text-slate-500">Strategy</label>
+          <input name="strategy" type="text" placeholder="Breakout, Mean Revert, Scalp..." class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Tags <span class="text-slate-400">(comma separated)</span></label>
+          <input name="tags" type="text" placeholder="earnings, FOMC, swing" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs text-slate-500">Trade Note</label>
+          <textarea name="note" rows="2" placeholder="Quick note about this trade..." class="w-full border rounded px-2 py-2 text-sm"></textarea>
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs text-slate-500">Screenshot URL <span class="text-slate-400">(optional — paste chart/screenshot link)</span></label>
+          <input name="screenshotUrl" type="url" placeholder="https://..." class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
         <div class="md:col-span-2 flex justify-end gap-2 pt-2">
           <button type="button" id="cancelTradeBtn" class="px-3 py-2 rounded border text-sm hover:bg-slate-100">Cancel</button>
           <button id="tradeSubmitBtn" type="submit" class="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Save Trade</button>
@@ -683,7 +734,7 @@
       M2K: 5
     };
     let trades = [];
-    let derived = { trades: [], pairs: [], openPositions: [], stats: {}, symbolSummary: [], equity: [] };
+    let derived = { trades: [], pairs: [], openPositions: [], stats: {}, symbolSummary: [], strategySummary: [], monthlyPnl: [], dowPnl: [], equity: [] };
     let selectedTradeIds = new Set();
     let editingTradeId = null;
     const expandedOpenSymbols = new Set();
@@ -696,6 +747,8 @@
       symbol: { key: "symbol", dir: "asc" }
     };
     let chart = null;
+    let monthlyChart = null;
+    let dowChart = null;
     let importState = { step: 1, parsedTrades: [], duplicates: 0 };
     let activeTab = "journal";
     let ideas = [];
@@ -1374,7 +1427,11 @@
         optionType: t.optionType || "",
         expiry: t.expiry || "",
         strike: t.strike || "",
-        description: t.description || ""
+        description: t.description || "",
+        strategy: t.strategy || "",
+        tags: t.tags || "",
+        note: t.note || "",
+        screenshotUrl: t.screenshotUrl || ""
       }));
     }
 
@@ -1726,6 +1783,10 @@
         qty: Number(t.qty) || 0,
         price: Number(t.price) || 0,
         description: t.description || "",
+        tags: t.tags || "",
+        strategy: t.strategy || "",
+        note: t.note || "",
+        screenshotUrl: t.screenshotUrl || "",
         assetType: t.assetType || "Stock",
         multiplier: Number(t.multiplier) > 0 ? Number(t.multiplier) : null,
         strike: t.strike || "",
@@ -1736,8 +1797,6 @@
         entry_trade_id: null,
         exit_trade_id: null
       })).sort((a, b) => new Date(a.date) - new Date(b.date));
-
-      const byInstrument = new Map();
       cloned.forEach((t) => {
         const key = instrumentKey(t);
         if (!byInstrument.has(key)) byInstrument.set(key, []);
@@ -1888,12 +1947,53 @@
         return { x: p.exitDate, y: running };
       });
 
+      // Strategy stats — keyed to entry trade's strategy
+      const tradeById = new Map(cloned.map((t) => [t.id, t]));
+      const strategyMap = new Map();
+      pairs.forEach((p) => {
+        const et = tradeById.get(p.entryId);
+        const strategy = (et && et.strategy) ? et.strategy.trim() : "(untagged)";
+        if (!strategyMap.has(strategy)) strategyMap.set(strategy, { strategy, trades: 0, wins: 0, totalPnl: 0 });
+        const s = strategyMap.get(strategy);
+        s.trades += 1; s.totalPnl += p.pnl;
+        if (p.pnl > 0) s.wins += 1;
+      });
+      const strategySummary = Array.from(strategyMap.values()).map((s) => ({
+        strategy: s.strategy, trades: s.trades,
+        winRate: s.trades ? (s.wins / s.trades) * 100 : 0,
+        avgPnl: s.trades ? s.totalPnl / s.trades : 0,
+        totalPnl: s.totalPnl
+      })).sort((a, b) => b.totalPnl - a.totalPnl);
+
+      // Monthly P&L
+      const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      const DAYS_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+      const monthlyMap = new Map();
+      const dowMap = new Map(DAYS_SHORT.map((d) => [d, 0]));
+      sortedPairs.forEach((p) => {
+        const d = new Date(p.exitDate);
+        const mk = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+        monthlyMap.set(mk, (monthlyMap.get(mk) || 0) + p.pnl);
+        const dow = DAYS_SHORT[d.getDay()];
+        dowMap.set(dow, (dowMap.get(dow) || 0) + p.pnl);
+      });
+      const monthlyPnl = Array.from(monthlyMap.entries())
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([month, pnl]) => {
+          const [y, m] = month.split("-");
+          return { label: `${MONTHS_SHORT[Number(m) - 1]} ${y}`, pnl };
+        });
+      const dowPnl = DAYS_SHORT.map((d) => ({ label: d, pnl: dowMap.get(d) || 0 }));
+
       return {
         trades: cloned,
         pairs,
         openPositions,
         stats: { totalPnl, winRate, profitFactor, closedTrades, bestTrade, worstTrade },
         symbolSummary,
+        strategySummary,
+        monthlyPnl,
+        dowPnl,
         equity
       };
     }
@@ -1905,6 +2005,7 @@
       const asset = el.filterAsset.value;
       const pnlFilter = el.filterPnl.value;
       const statusFilter = el.filterStatus.value;
+      const tagsFilter = (document.getElementById("filterTags").value || "").trim().toLowerCase();
 
       return derived.trades.filter((t) => {
         const dt = new Date(t.date);
@@ -1916,6 +2017,7 @@
         if (pnlFilter === "loss" && !(t.calculated_pnl < 0)) return false;
         if (pnlFilter === "open" && t.status === "closed") return false;
         if (statusFilter !== "all" && t.status !== statusFilter) return false;
+        if (tagsFilter && !(t.tags || "").toLowerCase().includes(tagsFilter)) return false;
         return true;
       });
     }
@@ -1958,15 +2060,19 @@
         const pnlClass = t.calculated_pnl > 0 ? "text-emerald-600" : (t.calculated_pnl < 0 ? "text-rose-600" : "text-slate-500");
         const statusClass = t.status === "closed" ? "bg-emerald-100 text-emerald-800" : (t.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800");
         const descriptor = t.assetType === "Option" ? [t.optionType, t.expiry].filter(Boolean).join(" ") : t.description;
+        const noteIcon = t.note ? `<span title="${escapeHtmlAttr(t.note)}" class="ml-1 cursor-help text-slate-400 hover:text-slate-700">📝</span>` : "";
+        const shotIcon = t.screenshotUrl ? `<a href="${escapeHtmlAttr(t.screenshotUrl)}" target="_blank" title="View screenshot" class="ml-1 text-slate-400 hover:text-blue-600">🖼</a>` : "";
         return `
           <tr class="border-b hover:bg-slate-50">
             <td class="p-2">
               <input type="checkbox" ${selectedTradeIds.has(t.id) ? "checked" : ""} onchange="toggleTradeSelection('${t.id}', this.checked)" />
             </td>
             <td class="p-2">${formatDate(t.date)}</td>
-            <td class="p-2 font-medium">${t.symbol}</td>
+            <td class="p-2 font-medium">${t.symbol}${noteIcon}${shotIcon}</td>
             <td class="p-2">${t.assetType}</td>
             <td class="p-2">${t.action}</td>
+            <td class="p-2 text-xs text-slate-500">${t.strategy ? escapeHtmlText(t.strategy) : ""}</td>
+            <td class="p-2">${renderTagChips(t.tags)}</td>
             <td class="p-2 text-right">${t.qty}</td>
             <td class="p-2 text-right">${t.price.toFixed(4)}</td>
             <td class="p-2 text-right ${pnlClass}">${formatCurrency(t.calculated_pnl)}</td>
@@ -2072,6 +2178,76 @@
       `).join("") : `<tr><td class="p-2 text-slate-500" colspan="6">No symbol performance data yet.</td></tr>`;
     }
 
+    function renderTagChips(tagsStr) {
+      if (!tagsStr) return "";
+      return tagsStr.split(",").map((t) => t.trim()).filter(Boolean)
+        .map((tag) => `<span class="inline-block text-xs px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mr-0.5">${escapeHtmlText(tag)}</span>`)
+        .join("");
+    }
+
+    function renderStrategyTable() {
+      const tbody = document.getElementById("strategyTableBody");
+      if (!tbody) return;
+      const rows = derived.strategySummary || [];
+      tbody.innerHTML = rows.length ? rows.map((s) => `
+        <tr class="border-b">
+          <td class="p-2 font-medium">${escapeHtmlText(s.strategy)}</td>
+          <td class="p-2 text-right">${s.trades}</td>
+          <td class="p-2 text-right">${s.winRate.toFixed(1)}%</td>
+          <td class="p-2 text-right ${s.avgPnl >= 0 ? "text-emerald-600" : "text-rose-600"}">${formatCurrency(s.avgPnl)}</td>
+          <td class="p-2 text-right ${s.totalPnl >= 0 ? "text-emerald-600" : "text-rose-600"}">${formatCurrency(s.totalPnl)}</td>
+        </tr>
+      `).join("") : `<tr><td class="p-2 text-slate-500" colspan="5">Add a strategy to your trades to see performance here.</td></tr>`;
+    }
+
+    function renderMonthlyChart() {
+      const ctx = document.getElementById("monthlyPnlChart");
+      if (!ctx) return;
+      const data = derived.monthlyPnl || [];
+      if (monthlyChart) monthlyChart.destroy();
+      monthlyChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: data.map((d) => d.label),
+          datasets: [{
+            label: "Monthly P&L",
+            data: data.map((d) => d.pnl),
+            backgroundColor: data.map((d) => d.pnl >= 0 ? "rgba(16,185,129,0.7)" : "rgba(239,68,68,0.7)"),
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: (v) => "$" + Number(v).toFixed(0) } } }
+        }
+      });
+    }
+
+    function renderDowChart() {
+      const ctx = document.getElementById("dowPnlChart");
+      if (!ctx) return;
+      const data = derived.dowPnl || [];
+      if (dowChart) dowChart.destroy();
+      dowChart = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: data.map((d) => d.label),
+          datasets: [{
+            label: "P&L by Day",
+            data: data.map((d) => d.pnl),
+            backgroundColor: data.map((d) => d.pnl >= 0 ? "rgba(99,102,241,0.7)" : "rgba(239,68,68,0.7)"),
+            borderRadius: 4
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: (v) => "$" + Number(v).toFixed(0) } } }
+        }
+      });
+    }
+
     function renderChart() {
       const ctx = document.getElementById("equityChart");
       const labels = derived.equity.map((p) => formatDate(p.x));
@@ -2104,7 +2280,10 @@
       renderTradeTable();
       renderPositionTables();
       renderSymbolSummary();
+      renderStrategyTable();
       renderChart();
+      renderMonthlyChart();
+      renderDowChart();
       updateSortIndicators();
     }
 
@@ -2155,6 +2334,10 @@
       form.optionType.value = trade.optionType || "";
       form.expiry.value = trade.expiry || "";
       form.description.value = trade.description || "";
+      form.strategy.value = trade.strategy || "";
+      form.tags.value = trade.tags || "";
+      form.note.value = trade.note || "";
+      form.screenshotUrl.value = trade.screenshotUrl || "";
       updateMultiplierInputState(form);
       openModal(document.getElementById("tradeModal"));
     }
@@ -2602,7 +2785,11 @@
           optionType: f.optionType.value || "",
           expiry: f.expiry.value || "",
           strike: "",
-          description: f.description.value || ""
+          description: f.description.value || "",
+          strategy: f.strategy.value.trim() || "",
+          tags: f.tags.value.trim() || "",
+          note: f.note.value || "",
+          screenshotUrl: f.screenshotUrl.value.trim() || ""
         };
         const exitDateRaw = (f.exitDate && f.exitDate.value) ? f.exitDate.value : "";
         const exitPriceRaw = (f.exitPrice && f.exitPrice.value) ? f.exitPrice.value : "";
@@ -2737,6 +2924,7 @@
         node.addEventListener("input", renderTradeTable);
         node.addEventListener("change", renderTradeTable);
       });
+      document.getElementById("filterTags").addEventListener("input", renderTradeTable);
       document.getElementById("resetFiltersBtn").addEventListener("click", () => {
         el.filterFrom.value = "";
         el.filterTo.value = "";
@@ -2744,6 +2932,7 @@
         el.filterAsset.value = "";
         el.filterPnl.value = "all";
         el.filterStatus.value = "all";
+        document.getElementById("filterTags").value = "";
         renderTradeTable();
       });
     }
