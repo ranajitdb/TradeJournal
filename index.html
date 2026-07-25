@@ -463,11 +463,6 @@
               </div>
             </div>
 
-            <div>
-              <label class="text-xs text-slate-500">List Notes</label>
-              <textarea id="watchlistNotes" rows="3" class="w-full border rounded px-2 py-2 text-sm"></textarea>
-            </div>
-
             <div class="border rounded-lg p-4 bg-slate-50 space-y-3">
               <div class="font-medium text-sm">Add Symbol</div>
               <div class="grid grid-cols-1 md:grid-cols-[140px,1fr,120px] gap-3">
@@ -1112,7 +1107,6 @@
       el.watchlistEditorTitle.textContent = selected.name || "Watch List";
       document.getElementById("watchlistName").value = selected.name || "";
       document.getElementById("watchlistTheme").value = selected.theme || "";
-      document.getElementById("watchlistNotes").value = selected.notes || "";
       document.getElementById("watchlistPinned").checked = Boolean(selected.pinned);
       document.getElementById("watchlistSymbolCount").textContent = `${(selected.items || []).length} symbols`;
 
@@ -1165,7 +1159,6 @@
       if (!selected) return;
       selected.name = document.getElementById("watchlistName").value.trim();
       selected.theme = document.getElementById("watchlistTheme").value.trim();
-      selected.notes = document.getElementById("watchlistNotes").value;
       selected.pinned = document.getElementById("watchlistPinned").checked;
       selected.updatedAt = new Date().toISOString();
       saveWatchlists();
@@ -2665,7 +2658,6 @@
       el.watchlistSearchInput.addEventListener("input", renderWatchlistsWorkspace);
       document.getElementById("watchlistName").addEventListener("input", () => syncSelectedWatchlistMeta(false));
       document.getElementById("watchlistTheme").addEventListener("input", () => syncSelectedWatchlistMeta(false));
-      document.getElementById("watchlistNotes").addEventListener("input", () => syncSelectedWatchlistMeta(false));
       document.getElementById("watchlistPinned").addEventListener("change", () => syncSelectedWatchlistMeta(true));
       document.getElementById("addWatchItemBtn").addEventListener("click", addWatchlistItem);
       el.watchlistItemsBody.addEventListener("input", (e) => {
