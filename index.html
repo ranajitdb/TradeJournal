@@ -368,6 +368,7 @@
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwAU3L7dBG3ITXwFsRwHXR8UZ94roh8_f0iyCcDaTd4TooHUORbJP078NgZuOnXlmusbQ/exec";
     const GAS_SHEET_NAME = "TradeLog";
+    const GAS_API_KEY = "RSKS_SECRET";
     const DEFAULT_FUTURES_MULTIPLIERS = {
       ES: 50,
       MES: 5,
@@ -465,7 +466,7 @@
     async function loadFromGoogleSheet(options = {}) {
       const { silent = false } = options;
       try {
-        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}`;
+        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(GAS_API_KEY)}`;
         const response = await fetch(url, { method: "GET" });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "Load failed");
@@ -483,9 +484,10 @@
       const payload = JSON.stringify({
         action: "replaceAllTrades",
         sheetName: GAS_SHEET_NAME,
+        apiKey: GAS_API_KEY,
         trades: getPersistableTrades()
       });
-      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
+      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(GAS_API_KEY)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
       const attempts = [
         { body: payload, headers: { "Content-Type": "text/plain;charset=utf-8" } },
         { body: payload, headers: { "Content-Type": "application/json" } },
