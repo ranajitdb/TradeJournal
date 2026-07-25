@@ -1797,6 +1797,8 @@
         entry_trade_id: null,
         exit_trade_id: null
       })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const byInstrument = new Map();
       cloned.forEach((t) => {
         const key = instrumentKey(t);
         if (!byInstrument.has(key)) byInstrument.set(key, []);
