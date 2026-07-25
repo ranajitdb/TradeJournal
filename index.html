@@ -366,9 +366,9 @@
   <script>
     const STORAGE_KEY = "tradelog_etrade_data";
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
+    const GOOGLE_API_KEY_STORAGE = "tradelog_google_api_key";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwAU3L7dBG3ITXwFsRwHXR8UZ94roh8_f0iyCcDaTd4TooHUORbJP078NgZuOnXlmusbQ/exec";
     const GAS_SHEET_NAME = "TradeLog";
-    const GAS_API_KEY = "RSKS_SECRET";
     const DEFAULT_FUTURES_MULTIPLIERS = {
       ES: 50,
       MES: 5,
@@ -446,6 +446,21 @@
       return localStorage.getItem(PENDING_SYNC_KEY) === "1";
     }
 
+    function getGoogleApiKey() {
+      return localStorage.getItem(GOOGLE_API_KEY_STORAGE) || "";
+    }
+
+    function ensureGoogleApiKey() {
+      const current = getGoogleApiKey();
+      if (current) return current;
+      const entered = prompt("Enter Google API key for TradeLog sync");
+      if (entered === null) return "";
+      const key = String(entered).trim();
+      if (!key) return "";
+      localStorage.setItem(GOOGLE_API_KEY_STORAGE, key);
+      return key;
+    }
+
     function getPersistableTrades() {
       return trades.map((t) => ({
         id: t.id,
@@ -465,8 +480,13 @@
 
     async function loadFromGoogleSheet(options = {}) {
       const { silent = false } = options;
+      const apiKey = getGoogleApiKey();
+      if (!apiKey) {
+        if (!silent) showToast("error", "Google API key not set.");
+        return;
+      }
       try {
-        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(GAS_API_KEY)}`;
+        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(apiKey)}`;
         const response = await fetch(url, { method: "GET" });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "Load failed");
@@ -481,13 +501,18 @@
 
     async function syncToGoogleSheet(options = {}) {
       const { silent = false } = options;
+      const apiKey = getGoogleApiKey();
+      if (!apiKey) {
+        if (!silent) showToast("error", "Google API key not set.");
+        return { ok: false, error: "Google API key not set." };
+      }
       const payload = JSON.stringify({
         action: "replaceAllTrades",
         sheetName: GAS_SHEET_NAME,
-        apiKey: GAS_API_KEY,
+        apiKey,
         trades: getPersistableTrades()
       });
-      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(GAS_API_KEY)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
+      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(apiKey)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
       const attempts = [
         { body: payload, headers: { "Content-Type": "text/plain;charset=utf-8" } },
         { body: payload, headers: { "Content-Type": "application/json" } },
@@ -1764,6 +1789,11 @@
     }
 
     async function initializeCloudSync() {
+      const key = ensureGoogleApiKey();
+      if (!key) {
+        showToast("error", "Google API key is required for cloud sync.");
+        return;
+      }
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
         if (!syncResult || !syncResult.ok) {
