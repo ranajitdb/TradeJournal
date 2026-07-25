@@ -8,7 +8,7 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body class="bg-slate-50 min-h-screen text-slate-900">
-  <div class="max-w-7xl mx-auto p-4 md:p-6">
+  <div id="appRoot" class="hidden max-w-7xl mx-auto p-4 md:p-6">
     <header class="mb-6">
       <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
@@ -23,6 +23,7 @@
           <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
           <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
           <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
+          <button id="logoutBtn" class="px-3 py-2 text-sm rounded bg-slate-200 text-slate-800 hover:bg-slate-300">Logout</button>
           <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
         </div>
       </div>
@@ -224,6 +225,25 @@
 
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+  <div id="loginGate" class="fixed inset-0 z-[60] bg-slate-100 flex items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-white border rounded-lg shadow p-5">
+      <h2 class="text-xl font-semibold mb-1">Sign in</h2>
+      <p class="text-sm text-slate-600 mb-4">Login to access Trade Journal.</p>
+      <form id="loginForm" class="space-y-3">
+        <div>
+          <label class="text-xs text-slate-500">User ID</label>
+          <input id="loginUserId" type="text" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Password</label>
+          <input id="loginPassword" type="password" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div id="loginError" class="text-sm text-rose-700 min-h-[20px]"></div>
+        <button id="loginSubmitBtn" type="submit" class="w-full px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Login</button>
+      </form>
+    </div>
+  </div>
+
   <div id="tradeModal" class="hidden fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
     <div class="bg-white rounded-lg w-full max-w-xl p-4">
       <div class="flex items-center justify-between mb-3">
@@ -366,7 +386,7 @@
   <script>
     const STORAGE_KEY = "tradelog_etrade_data";
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
-    const GOOGLE_API_KEY_STORAGE = "tradelog_google_api_key";
+    const SESSION_TOKEN_STORAGE = "tradelog_session_token";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwAU3L7dBG3ITXwFsRwHXR8UZ94roh8_f0iyCcDaTd4TooHUORbJP078NgZuOnXlmusbQ/exec";
     const GAS_SHEET_NAME = "TradeLog";
     const DEFAULT_FUTURES_MULTIPLIERS = {
@@ -385,6 +405,7 @@
     let editingTradeId = null;
     const expandedOpenSymbols = new Set();
     let cloudSyncTimer = null;
+    let cloudSyncIntervalId = null;
     const sortState = {
       raw: { key: "date", dir: "desc" },
       closed: { key: "exitDate", dir: "desc" },
@@ -446,19 +467,55 @@
       return localStorage.getItem(PENDING_SYNC_KEY) === "1";
     }
 
-    function getGoogleApiKey() {
-      return localStorage.getItem(GOOGLE_API_KEY_STORAGE) || "";
+    function getSessionToken() {
+      return localStorage.getItem(SESSION_TOKEN_STORAGE) || "";
     }
 
-    function ensureGoogleApiKey() {
-      const current = getGoogleApiKey();
-      if (current) return current;
-      const entered = prompt("Enter Google API key for TradeLog sync");
-      if (entered === null) return "";
-      const key = String(entered).trim();
-      if (!key) return "";
-      localStorage.setItem(GOOGLE_API_KEY_STORAGE, key);
-      return key;
+    function setSessionToken(token) {
+      localStorage.setItem(SESSION_TOKEN_STORAGE, String(token || ""));
+    }
+
+    function clearSessionToken() {
+      localStorage.removeItem(SESSION_TOKEN_STORAGE);
+    }
+
+    function lockApp(message = "") {
+      document.getElementById("appRoot").classList.add("hidden");
+      document.getElementById("loginGate").classList.remove("hidden");
+      document.getElementById("loginError").textContent = message || "";
+    }
+
+    function unlockApp() {
+      document.getElementById("loginGate").classList.add("hidden");
+      document.getElementById("appRoot").classList.remove("hidden");
+      document.getElementById("loginError").textContent = "";
+    }
+
+    async function loginWithCredentials(userId, password) {
+      const payload = JSON.stringify({
+        action: "login",
+        sheetName: GAS_SHEET_NAME,
+        userId: String(userId || "").trim(),
+        password: String(password || "")
+      });
+      const response = await fetch(GAS_WEB_APP_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: payload
+      });
+      const raw = await response.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch (parseErr) {
+        throw new Error(`Unexpected login response: ${raw.slice(0, 180)}`);
+      }
+      if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+      if (!data.ok) throw new Error(data.error || "Login failed");
+      const token = data.sessionToken || data.token || data.session_token || "";
+      if (!token) throw new Error("Login succeeded but no session token was returned.");
+      setSessionToken(token);
+      return token;
     }
 
     function getPersistableTrades() {
@@ -480,13 +537,13 @@
 
     async function loadFromGoogleSheet(options = {}) {
       const { silent = false } = options;
-      const apiKey = getGoogleApiKey();
-      if (!apiKey) {
-        if (!silent) showToast("error", "Google API key not set.");
-        return;
+      const sessionToken = getSessionToken();
+      if (!sessionToken) {
+        if (!silent) showToast("error", "Please login first.");
+        return { ok: false, error: "Not authenticated" };
       }
       try {
-        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(apiKey)}`;
+        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&sessionToken=${encodeURIComponent(sessionToken)}`;
         const response = await fetch(url, { method: "GET" });
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || "Load failed");
@@ -494,25 +551,27 @@
         saveTrades({ skipCloud: true, markPending: false });
         refreshAll();
         if (!silent) showToast("ok", `Loaded ${trades.length} trade(s) from Google Sheet.`);
+        return { ok: true, data };
       } catch (err) {
         if (!silent) showToast("error", `Google load failed: ${err.message}`);
+        return { ok: false, error: err.message };
       }
     }
 
     async function syncToGoogleSheet(options = {}) {
       const { silent = false } = options;
-      const apiKey = getGoogleApiKey();
-      if (!apiKey) {
-        if (!silent) showToast("error", "Google API key not set.");
-        return { ok: false, error: "Google API key not set." };
+      const sessionToken = getSessionToken();
+      if (!sessionToken) {
+        if (!silent) showToast("error", "Please login first.");
+        return { ok: false, error: "Not authenticated" };
       }
       const payload = JSON.stringify({
         action: "replaceAllTrades",
         sheetName: GAS_SHEET_NAME,
-        apiKey,
+        sessionToken,
         trades: getPersistableTrades()
       });
-      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&apiKey=${encodeURIComponent(apiKey)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
+      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&sessionToken=${encodeURIComponent(sessionToken)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
       const attempts = [
         { body: payload, headers: { "Content-Type": "text/plain;charset=utf-8" } },
         { body: payload, headers: { "Content-Type": "application/json" } },
@@ -1788,33 +1847,90 @@
       });
     }
 
-    async function initializeCloudSync() {
-      const key = ensureGoogleApiKey();
-      if (!key) {
+    function wireAuthEvents() {
+      const loginForm = document.getElementById("loginForm");
+      const loginSubmitBtn = document.getElementById("loginSubmitBtn");
+      const loginError = document.getElementById("loginError");
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const userId = document.getElementById("loginUserId").value;
+        const password = document.getElementById("loginPassword").value;
+        loginError.textContent = "";
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.textContent = "Signing in...";
+        try {
+          await loginWithCredentials(userId, password);
+          document.getElementById("loginPassword").value = "";
+          await initializeCloudSync();
+        } catch (err) {
+          clearSessionToken();
+          lockApp(err.message || "Login failed");
+        } finally {
+          loginSubmitBtn.disabled = false;
+          loginSubmitBtn.textContent = "Login";
+        }
+      });
+
+      document.getElementById("logoutBtn").addEventListener("click", () => {
+        clearSessionToken();
         trades = [];
         selectedTradeIds.clear();
         refreshAll();
-        showToast("error", "Google API key is required for cloud sync.");
+        lockApp("Signed out.");
+      });
+    }
+
+    async function initializeCloudSync() {
+      const token = getSessionToken();
+      if (!token) {
+        trades = [];
+        selectedTradeIds.clear();
+        refreshAll();
+        lockApp("Please login to continue.");
         return;
       }
+      unlockApp();
       loadTrades();
       refreshAll();
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
         if (!syncResult || !syncResult.ok) {
-          showToast("error", "Local trades could not sync to Google Sheet yet. Keeping local data.");
+          clearSessionToken();
+          trades = [];
+          selectedTradeIds.clear();
+          refreshAll();
+          lockApp("Session expired or invalid. Please login again.");
+          return;
         } else {
-          await loadFromGoogleSheet({ silent: true });
+          const loadResult = await loadFromGoogleSheet({ silent: true });
+          if (!loadResult || !loadResult.ok) {
+            clearSessionToken();
+            trades = [];
+            selectedTradeIds.clear();
+            refreshAll();
+            lockApp("Session expired or invalid. Please login again.");
+            return;
+          }
         }
       } else {
-        await loadFromGoogleSheet({ silent: true });
+        const loadResult = await loadFromGoogleSheet({ silent: true });
+        if (!loadResult || !loadResult.ok) {
+          clearSessionToken();
+          trades = [];
+          selectedTradeIds.clear();
+          refreshAll();
+          lockApp("Session expired or invalid. Please login again.");
+          return;
+        }
       }
-      setInterval(() => {
+      if (cloudSyncIntervalId) clearInterval(cloudSyncIntervalId);
+      cloudSyncIntervalId = setInterval(() => {
         if (hasPendingSync()) syncToGoogleSheet({ silent: true });
       }, 15000);
     }
 
     wireEvents();
+    wireAuthEvents();
     initializeCloudSync();
   </script>
 </body>
