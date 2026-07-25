@@ -1,0 +1,1786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trade Journal Portal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-900">
+  <div class="max-w-7xl mx-auto p-4 md:p-6">
+    <header class="mb-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h1 class="text-3xl font-bold">Trade Journal Portal</h1>
+          <p class="text-slate-600">Stocks, options, and futures tracking with E*TRADE import.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button id="openAddTradeBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Add Trade</button>
+          <button id="openImportBtn" class="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">Import E*TRADE CSV</button>
+          <button id="analyzeTradesBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Trade Analysis</button>
+          <button id="exportCsvBtn" class="px-3 py-2 text-sm rounded bg-slate-800 text-white hover:bg-slate-900">Export CSV</button>
+          <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
+          <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
+          <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
+          <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
+        </div>
+      </div>
+    </header>
+
+    <section class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Total P&L</div>
+        <div id="statTotalPnl" class="text-xl font-semibold">$0.00</div>
+      </div>
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Win Rate</div>
+        <div id="statWinRate" class="text-xl font-semibold">0.00%</div>
+      </div>
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Profit Factor</div>
+        <div id="statProfitFactor" class="text-xl font-semibold">0.00</div>
+      </div>
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Closed Trades</div>
+        <div id="statClosedTrades" class="text-xl font-semibold">0</div>
+      </div>
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Best Trade</div>
+        <div id="statBestTrade" class="text-xl font-semibold">$0.00</div>
+      </div>
+      <div class="bg-white rounded-lg border p-3">
+        <div class="text-xs text-slate-500">Worst Trade</div>
+        <div id="statWorstTrade" class="text-xl font-semibold">$0.00</div>
+      </div>
+    </section>
+
+    <section class="bg-white rounded-lg border p-4 mb-6">
+      <h2 class="font-semibold mb-3">Filters</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-3">
+        <div>
+          <label class="text-xs text-slate-500">From</label>
+          <input id="filterFrom" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">To</label>
+          <input id="filterTo" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Symbol</label>
+          <input id="filterSymbol" type="text" placeholder="AAPL" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Asset Type</label>
+          <select id="filterAsset" class="w-full border rounded px-2 py-2 text-sm">
+            <option value="">All</option>
+            <option value="Stock">Stock</option>
+            <option value="Option">Option</option>
+            <option value="Future">Future</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">P&L Filter</label>
+          <select id="filterPnl" class="w-full border rounded px-2 py-2 text-sm">
+            <option value="all">All</option>
+            <option value="profit">Profit only</option>
+            <option value="loss">Loss only</option>
+            <option value="open">Open positions</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Status</label>
+          <select id="filterStatus" class="w-full border rounded px-2 py-2 text-sm">
+            <option value="all">All</option>
+            <option value="open">Open</option>
+            <option value="partial">Partial</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+        <div class="flex items-end">
+          <button id="resetFiltersBtn" class="w-full px-3 py-2 text-sm rounded border hover:bg-slate-100">Reset Filters</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6">
+      <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Closed Positions</h2>
+        <div class="overflow-auto max-h-[320px]">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-slate-100">
+              <tr>
+                <th class="p-2 text-left">
+                  <button class="hover:underline" onclick="toggleSort('closed','symbol')">Instrument<span id="sort-closed-symbol"></span></button>
+                </th>
+                <th class="p-2 text-left">Entry</th>
+                <th class="p-2 text-left">
+                  <button class="hover:underline" onclick="toggleSort('closed','exitDate')">Exit<span id="sort-closed-exitDate"></span></button>
+                </th>
+                <th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-right">Days</th>
+                <th class="p-2 text-right">P&L</th>
+              </tr>
+            </thead>
+            <tbody id="closedPairTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white border rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">Open Positions</h2>
+          <div class="flex items-center gap-2">
+            <button id="expandAllOpenBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Expand all</button>
+            <button id="collapseAllOpenBtn" class="px-2 py-1 rounded border text-xs hover:bg-slate-100">Collapse all</button>
+          </div>
+        </div>
+        <div class="overflow-auto max-h-[320px]">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-slate-100">
+              <tr>
+                <th class="p-2 text-left">
+                  <button class="hover:underline" onclick="toggleSort('open','symbol')">Instrument<span id="sort-open-symbol"></span></button>
+                </th>
+                <th class="p-2 text-left">Side</th>
+                <th class="p-2 text-left">
+                  <button class="hover:underline" onclick="toggleSort('open','entryDate')">Entry<span id="sort-open-entryDate"></span></button>
+                </th>
+                <th class="p-2 text-right">Open Qty</th>
+                <th class="p-2 text-right">Entry Px</th>
+              </tr>
+            </thead>
+            <tbody id="openPairTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="bg-white border rounded-lg p-4 mb-6 mt-6">
+      <h2 class="font-semibold mb-3">Symbol Performance</h2>
+      <div class="overflow-auto max-h-[320px]">
+        <table class="w-full text-sm">
+          <thead class="sticky top-0 bg-slate-100">
+            <tr>
+              <th class="p-2 text-left">
+                <button class="hover:underline" onclick="toggleSort('symbol','symbol')">Symbol<span id="sort-symbol-symbol"></span></button>
+              </th>
+              <th class="p-2 text-right">Trades</th>
+              <th class="p-2 text-right">Win %</th>
+              <th class="p-2 text-right">Avg P&L</th>
+              <th class="p-2 text-right">Volume</th>
+              <th class="p-2 text-right">Total P&L</th>
+            </tr>
+          </thead>
+          <tbody id="symbolTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-6 mb-6 mt-6">
+      <div class="bg-white border rounded-lg p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">Trades</h2>
+          <div class="flex items-center gap-2">
+            <button id="bulkDeleteBtn" class="hidden px-2 py-1 rounded bg-rose-600 text-white text-xs hover:bg-rose-700">Delete Selected</button>
+            <span id="tradeCountBadge" class="text-xs px-2 py-1 rounded bg-slate-100">0 trades</span>
+          </div>
+        </div>
+        <div class="overflow-auto max-h-[460px]">
+          <table class="w-full text-sm">
+            <thead class="sticky top-0 bg-slate-100">
+              <tr class="text-left">
+                <th class="p-2 w-10">
+                  <input id="selectAllTradesCheckbox" type="checkbox" title="Select all visible trades" />
+                </th>
+                <th class="p-2">
+                  <button class="hover:underline" onclick="toggleSort('raw','date')">Date<span id="sort-raw-date"></span></button>
+                </th>
+                <th class="p-2">
+                  <button class="hover:underline" onclick="toggleSort('raw','symbol')">Symbol<span id="sort-raw-symbol"></span></button>
+                </th>
+                <th class="p-2">Type</th>
+                <th class="p-2">Action</th>
+                <th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-right">Price</th>
+                <th class="p-2 text-right">P&L</th>
+                <th class="p-2">
+                  <button class="hover:underline" onclick="toggleSort('raw','status')">Status<span id="sort-raw-status"></span></button>
+                </th>
+                <th class="p-2"></th>
+              </tr>
+            </thead>
+            <tbody id="tradeTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="bg-white border rounded-lg p-4">
+        <h2 class="font-semibold mb-3">Equity Curve</h2>
+        <canvas id="equityChart" height="240"></canvas>
+      </div>
+    </section>
+  </div>
+
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+  <div id="tradeModal" class="hidden fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-white rounded-lg w-full max-w-xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 id="tradeModalTitle" class="font-semibold">Add Trade</h3>
+        <button id="closeTradeModalBtn" class="text-slate-500 hover:text-slate-800">&times;</button>
+      </div>
+      <form id="tradeForm" class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <input id="editingTradeId" type="hidden" value="" />
+        <div>
+          <label class="text-xs text-slate-500">Entry Date/Time</label>
+          <input name="date" type="datetime-local" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Symbol</label>
+          <input name="symbol" type="text" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Asset Type</label>
+          <select name="assetType" class="w-full border rounded px-2 py-2 text-sm" required>
+            <option value="Stock">Stock</option>
+            <option value="Option">Option</option>
+            <option value="Future">Future</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Action</label>
+          <select name="action" class="w-full border rounded px-2 py-2 text-sm" required>
+            <option value="Buy">Buy</option>
+            <option value="Sell">Sell</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Quantity</label>
+          <input name="qty" type="number" step="0.0001" min="0.0001" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Entry Price</label>
+          <input name="price" type="number" step="0.0001" min="0.0001" class="w-full border rounded px-2 py-2 text-sm" required />
+        </div>
+        <div id="exitDateWrap">
+          <label class="text-xs text-slate-500">Exit Date/Time (optional)</label>
+          <input name="exitDate" type="datetime-local" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div id="exitPriceWrap">
+          <label class="text-xs text-slate-500">Exit Price (optional)</label>
+          <input name="exitPrice" type="number" step="0.0001" min="0.0001" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Futures Multiplier</label>
+          <input name="multiplier" type="number" step="0.01" min="0.01" placeholder="ES=50, NQ=20, MNQ=2" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Option Type (optional)</label>
+          <select name="optionType" class="w-full border rounded px-2 py-2 text-sm">
+            <option value="">N/A</option>
+            <option value="Call">Call</option>
+            <option value="Put">Put</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-slate-500">Expiry (optional)</label>
+          <input name="expiry" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs text-slate-500">Description</label>
+          <input name="description" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+        </div>
+        <div class="md:col-span-2 flex justify-end gap-2 pt-2">
+          <button type="button" id="cancelTradeBtn" class="px-3 py-2 rounded border text-sm hover:bg-slate-100">Cancel</button>
+          <button id="tradeSubmitBtn" type="submit" class="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Save Trade</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="importModal" class="hidden fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-white rounded-lg w-full max-w-4xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold">Import Wizard</h3>
+        <button id="closeImportModalBtn" class="text-slate-500 hover:text-slate-800">&times;</button>
+      </div>
+      <div class="mb-3 text-sm text-slate-600" id="importStepLabel">Step 1 of 3: Upload CSV</div>
+      <div id="importStep1">
+        <input id="csvInput" type="file" accept=".csv,text/csv" class="block mb-3" />
+        <p class="text-sm text-slate-600">Expected E*TRADE format with Symbol, Status, Fill, Description, and Timestamp.</p>
+      </div>
+      <div id="importStep2" class="hidden">
+        <div id="importValidation" class="mb-3 text-sm"></div>
+        <div class="overflow-auto max-h-[280px] border rounded">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-100 sticky top-0">
+              <tr>
+                <th class="p-2 text-left">Date</th>
+                <th class="p-2 text-left">Symbol</th>
+                <th class="p-2 text-left">Action</th>
+                <th class="p-2 text-right">Qty</th>
+                <th class="p-2 text-right">Price</th>
+                <th class="p-2 text-left">Type</th>
+              </tr>
+            </thead>
+            <tbody id="importPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div id="importStep3" class="hidden">
+        <div id="importSummary" class="text-sm text-slate-700 mb-3"></div>
+        <div id="importLoading" class="hidden text-sm text-blue-700">Importing...</div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="importBackBtn" class="px-3 py-2 rounded border text-sm hover:bg-slate-100 hidden">Back</button>
+        <button id="importNextBtn" class="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700">Next</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="analysisModal" class="hidden fixed inset-0 bg-black/40 z-40 items-center justify-center p-4">
+    <div class="bg-white rounded-lg w-full max-w-3xl p-4">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="font-semibold">Trade Analysis & Validation</h3>
+        <button id="closeAnalysisModalBtn" class="text-slate-500 hover:text-slate-800">&times;</button>
+      </div>
+      <div id="analysisSummary" class="mb-3 text-sm text-slate-700"></div>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="border rounded p-3">
+          <h4 class="font-medium text-rose-700 mb-2">Issues Found</h4>
+          <ul id="analysisIssues" class="text-sm space-y-1 list-disc pl-4"></ul>
+        </div>
+        <div class="border rounded p-3">
+          <h4 class="font-medium text-blue-700 mb-2">Validation Notes</h4>
+          <ul id="analysisNotes" class="text-sm space-y-1 list-disc pl-4"></ul>
+        </div>
+      </div>
+      <div class="flex justify-end gap-2 mt-4">
+        <button id="rerunAnalysisBtn" class="px-3 py-2 rounded border text-sm hover:bg-slate-100">Re-run</button>
+        <button id="closeAnalysisFooterBtn" class="px-3 py-2 rounded bg-slate-800 text-white text-sm hover:bg-slate-900">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "tradelog_etrade_data";
+    const PENDING_SYNC_KEY = "tradelog_pending_sync";
+    const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwAU3L7dBG3ITXwFsRwHXR8UZ94roh8_f0iyCcDaTd4TooHUORbJP078NgZuOnXlmusbQ/exec";
+    const GAS_SHEET_NAME = "TradeLog";
+    const DEFAULT_FUTURES_MULTIPLIERS = {
+      ES: 50,
+      MES: 5,
+      NQ: 20,
+      MNQ: 2,
+      YM: 5,
+      MYM: 0.5,
+      RTY: 50,
+      M2K: 5
+    };
+    let trades = [];
+    let derived = { trades: [], pairs: [], openPositions: [], stats: {}, symbolSummary: [], equity: [] };
+    let selectedTradeIds = new Set();
+    let editingTradeId = null;
+    const expandedOpenSymbols = new Set();
+    let cloudSyncTimer = null;
+    const sortState = {
+      raw: { key: "date", dir: "desc" },
+      closed: { key: "exitDate", dir: "desc" },
+      open: { key: "entryDate", dir: "desc" },
+      symbol: { key: "symbol", dir: "asc" }
+    };
+    let chart = null;
+    let importState = { step: 1, parsedTrades: [], duplicates: 0 };
+
+    const el = {
+      tradeTableBody: document.getElementById("tradeTableBody"),
+      closedPairTableBody: document.getElementById("closedPairTableBody"),
+      openPairTableBody: document.getElementById("openPairTableBody"),
+      symbolTableBody: document.getElementById("symbolTableBody"),
+      tradeCountBadge: document.getElementById("tradeCountBadge"),
+      statTotalPnl: document.getElementById("statTotalPnl"),
+      statWinRate: document.getElementById("statWinRate"),
+      statProfitFactor: document.getElementById("statProfitFactor"),
+      statClosedTrades: document.getElementById("statClosedTrades"),
+      statBestTrade: document.getElementById("statBestTrade"),
+      statWorstTrade: document.getElementById("statWorstTrade"),
+      toastContainer: document.getElementById("toastContainer"),
+      filterFrom: document.getElementById("filterFrom"),
+      filterTo: document.getElementById("filterTo"),
+      filterSymbol: document.getElementById("filterSymbol"),
+      filterAsset: document.getElementById("filterAsset"),
+      filterPnl: document.getElementById("filterPnl"),
+      filterStatus: document.getElementById("filterStatus"),
+      bulkDeleteBtn: document.getElementById("bulkDeleteBtn"),
+      selectAllTradesCheckbox: document.getElementById("selectAllTradesCheckbox"),
+      tradeModalTitle: document.getElementById("tradeModalTitle"),
+      tradeSubmitBtn: document.getElementById("tradeSubmitBtn"),
+      editingTradeId: document.getElementById("editingTradeId"),
+      analysisSummary: document.getElementById("analysisSummary"),
+      analysisIssues: document.getElementById("analysisIssues"),
+      analysisNotes: document.getElementById("analysisNotes"),
+      exitDateWrap: document.getElementById("exitDateWrap"),
+      exitPriceWrap: document.getElementById("exitPriceWrap")
+    };
+
+    function uid() {
+      if (crypto && crypto.randomUUID) return crypto.randomUUID();
+      return "id-" + Date.now() + "-" + Math.random().toString(16).slice(2);
+    }
+
+    function showToast(type, msg) {
+      const div = document.createElement("div");
+      div.className = "px-3 py-2 rounded text-sm shadow text-white " + (type === "error" ? "bg-rose-600" : "bg-emerald-600");
+      div.textContent = msg;
+      el.toastContainer.appendChild(div);
+      setTimeout(() => div.remove(), 3500);
+    }
+
+    function setPendingSync(flag) {
+      localStorage.setItem(PENDING_SYNC_KEY, flag ? "1" : "0");
+    }
+
+    function hasPendingSync() {
+      return localStorage.getItem(PENDING_SYNC_KEY) === "1";
+    }
+
+    function getPersistableTrades() {
+      return trades.map((t) => ({
+        id: t.id,
+        date: t.date,
+        symbol: t.symbol,
+        assetType: t.assetType,
+        action: t.action,
+        qty: Number(t.qty),
+        price: Number(t.price),
+        multiplier: t.multiplier ?? null,
+        optionType: t.optionType || "",
+        expiry: t.expiry || "",
+        strike: t.strike || "",
+        description: t.description || ""
+      }));
+    }
+
+    async function loadFromGoogleSheet(options = {}) {
+      const { silent = false } = options;
+      try {
+        const url = `${GAS_WEB_APP_URL}?action=loadTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}`;
+        const response = await fetch(url, { method: "GET" });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || "Load failed");
+        trades = Array.isArray(data.trades) ? data.trades : [];
+        saveTrades({ skipCloud: true, markPending: false });
+        refreshAll();
+        if (!silent) showToast("ok", `Loaded ${trades.length} trade(s) from Google Sheet.`);
+      } catch (err) {
+        if (!silent) showToast("error", `Google load failed: ${err.message}`);
+      }
+    }
+
+    async function syncToGoogleSheet(options = {}) {
+      const { silent = false } = options;
+      const payload = JSON.stringify({
+        action: "replaceAllTrades",
+        sheetName: GAS_SHEET_NAME,
+        trades: getPersistableTrades()
+      });
+      const formPayload = `action=replaceAllTrades&sheetName=${encodeURIComponent(GAS_SHEET_NAME)}&trades=${encodeURIComponent(JSON.stringify(getPersistableTrades()))}`;
+      const attempts = [
+        { body: payload, headers: { "Content-Type": "text/plain;charset=utf-8" } },
+        { body: payload, headers: { "Content-Type": "application/json" } },
+        { body: payload, headers: {} },
+        { body: formPayload, headers: { "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8" } }
+      ];
+      let lastError = null;
+
+      try {
+        for (const attempt of attempts) {
+          try {
+            const response = await fetch(GAS_WEB_APP_URL, {
+              method: "POST",
+              headers: attempt.headers,
+              body: attempt.body
+            });
+            const raw = await response.text();
+            let data = null;
+            try {
+              data = JSON.parse(raw);
+            } catch (parseErr) {
+              throw new Error(`Unexpected response: ${raw.slice(0, 180)}`);
+            }
+            if (!response.ok) throw new Error(data?.error || `HTTP ${response.status}`);
+            if (!data.ok) throw new Error(data.error || "Sync failed");
+            setPendingSync(false);
+            if (!silent) showToast("ok", `Synced ${trades.length} trade(s) to Google Sheet.`);
+            return { ok: true, data };
+          } catch (err) {
+            lastError = err;
+          }
+        }
+        throw lastError || new Error("Sync failed");
+      } catch (err) {
+        setPendingSync(true);
+        if (!silent) showToast("error", `Google sync failed: ${err.message}`);
+        return { ok: false, error: err.message };
+      }
+    }
+
+    function scheduleCloudSync() {
+      if (cloudSyncTimer) clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = setTimeout(() => {
+        syncToGoogleSheet({ silent: true });
+      }, 700);
+    }
+
+    function saveTrades(options = {}) {
+      const { skipCloud = false, markPending = true } = options;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(trades));
+      if (markPending) setPendingSync(true);
+      if (!skipCloud) scheduleCloudSync();
+    }
+
+    function loadTrades() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        trades = raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        trades = [];
+      }
+    }
+
+    function formatCurrency(n) {
+      return (n || 0).toLocaleString(undefined, { style: "currency", currency: "USD" });
+    }
+
+    function formatDate(d) {
+      if (!d) return "-";
+      return new Date(d).toLocaleString();
+    }
+
+    function normalizeSymbolForMultiplier(symbol) {
+      return String(symbol || "").toUpperCase().trim().replace(/^\//, "");
+    }
+
+    function getDefaultFuturesMultiplier(symbol) {
+      const normalized = normalizeSymbolForMultiplier(symbol);
+      const keys = Object.keys(DEFAULT_FUTURES_MULTIPLIERS).sort((a, b) => b.length - a.length);
+      for (const key of keys) {
+        if (normalized.startsWith(key)) return DEFAULT_FUTURES_MULTIPLIERS[key];
+      }
+      return 1;
+    }
+
+    function runTradeAnalysis() {
+      const d = derived;
+      const issues = [];
+      const notes = [];
+
+      if (!d.trades.length) {
+        issues.push("No trades available for analysis.");
+        return { issues, notes, score: 0 };
+      }
+
+      const invalidTrades = d.trades.filter((t) =>
+        !t.symbol || !t.date || Number(t.qty) <= 0 || Number(t.price) <= 0 || (t.assetType === "Future" && getContractMultiplier(t) <= 0)
+      );
+      if (invalidTrades.length) {
+        issues.push(`${invalidTrades.length} trade(s) have invalid symbol/date/qty/price/multiplier values.`);
+      } else {
+        notes.push("All trades have valid core fields.");
+      }
+
+      const dupMap = new Map();
+      d.trades.forEach((t) => {
+        const k = [t.date, t.symbol, t.action, t.qty, t.price].join("|");
+        dupMap.set(k, (dupMap.get(k) || 0) + 1);
+      });
+      const duplicateRows = Array.from(dupMap.values()).filter((c) => c > 1).reduce((a, b) => a + (b - 1), 0);
+      if (duplicateRows > 0) {
+        issues.push(`${duplicateRows} potential duplicate trade row(s) detected.`);
+      } else {
+        notes.push("No duplicate trades detected.");
+      }
+
+      const badPairs = d.pairs.filter((p) => !p.symbol || !p.qty || new Date(p.exitDate) < new Date(p.entryDate));
+      if (badPairs.length) {
+        issues.push(`${badPairs.length} paired trade(s) have inconsistent sequencing.`);
+      } else {
+        notes.push("Pair sequencing is consistent.");
+      }
+
+      if (d.openPositions.length > 0) {
+        notes.push(`${d.openPositions.length} open lot(s) remain unmatched (expected for active positions).`);
+      } else {
+        notes.push("No open lots remain; all positions are closed.");
+      }
+
+      if (d.pairs.length === 0) {
+        issues.push("No closed pairs found yet, so win rate and profit factor are limited.");
+      } else {
+        notes.push(`${d.pairs.length} closed pair(s) used for P&L stats.`);
+      }
+
+      if (d.stats.profitFactor > 0 && Number.isFinite(d.stats.profitFactor) && d.stats.profitFactor < 1) {
+        issues.push(`Profit factor is ${d.stats.profitFactor.toFixed(2)} (< 1.00).`);
+      } else if (Number.isFinite(d.stats.profitFactor)) {
+        notes.push(`Profit factor is ${d.stats.profitFactor.toFixed(2)}.`);
+      } else {
+        notes.push("Profit factor is infinite (no realized losses yet).");
+      }
+
+      if (d.stats.totalPnl < 0) {
+        issues.push(`Total realized P&L is negative (${formatCurrency(d.stats.totalPnl)}).`);
+      } else {
+        notes.push(`Total realized P&L is ${formatCurrency(d.stats.totalPnl)}.`);
+      }
+
+      const score = Math.max(0, Math.min(100, 100 - (issues.length * 12)));
+      return { issues, notes, score };
+    }
+
+    function showTradeAnalysis() {
+      const report = runTradeAnalysis();
+      const issueCount = report.issues.length;
+      el.analysisSummary.innerHTML = `<span class="font-medium">Quality Score:</span> ${report.score}/100 &nbsp;|&nbsp; <span class="font-medium">Issues:</span> ${issueCount} &nbsp;|&nbsp; <span class="font-medium">Trades:</span> ${derived.trades.length}`;
+      el.analysisIssues.innerHTML = report.issues.length
+        ? report.issues.map((x) => `<li>${x}</li>`).join("")
+        : `<li class="text-emerald-700">No critical issues found.</li>`;
+      el.analysisNotes.innerHTML = report.notes.length
+        ? report.notes.map((x) => `<li>${x}</li>`).join("")
+        : `<li>No notes.</li>`;
+      openModal(document.getElementById("analysisModal"));
+    }
+
+    function compareValues(a, b, dir, type = "string") {
+      let left = a;
+      let right = b;
+      if (type === "date") {
+        left = new Date(a || 0).getTime();
+        right = new Date(b || 0).getTime();
+      } else if (type === "number") {
+        left = Number(a || 0);
+        right = Number(b || 0);
+      } else {
+        left = String(a || "").toUpperCase();
+        right = String(b || "").toUpperCase();
+      }
+      if (left < right) return dir === "asc" ? -1 : 1;
+      if (left > right) return dir === "asc" ? 1 : -1;
+      return 0;
+    }
+
+    function setSortIndicator(id, table, key) {
+      const node = document.getElementById(id);
+      if (!node) return;
+      const active = sortState[table].key === key;
+      node.textContent = active ? (sortState[table].dir === "asc" ? " ▲" : " ▼") : "";
+    }
+
+    function updateSortIndicators() {
+      setSortIndicator("sort-raw-date", "raw", "date");
+      setSortIndicator("sort-raw-symbol", "raw", "symbol");
+      setSortIndicator("sort-raw-status", "raw", "status");
+      setSortIndicator("sort-closed-symbol", "closed", "symbol");
+      setSortIndicator("sort-closed-exitDate", "closed", "exitDate");
+      setSortIndicator("sort-open-symbol", "open", "symbol");
+      setSortIndicator("sort-open-entryDate", "open", "entryDate");
+      setSortIndicator("sort-symbol-symbol", "symbol", "symbol");
+    }
+
+    function toggleSort(table, key) {
+      if (!sortState[table]) return;
+      if (sortState[table].key === key) {
+        sortState[table].dir = sortState[table].dir === "asc" ? "desc" : "asc";
+      } else {
+        sortState[table].key = key;
+        sortState[table].dir = key.toLowerCase().includes("date") ? "desc" : "asc";
+      }
+      refreshAll();
+    }
+    window.toggleSort = toggleSort;
+
+    function toggleOpenGroup(encodedSymbol) {
+      const symbol = decodeURIComponent(encodedSymbol);
+      if (expandedOpenSymbols.has(symbol)) expandedOpenSymbols.delete(symbol);
+      else expandedOpenSymbols.add(symbol);
+      renderPositionTables();
+      updateSortIndicators();
+    }
+    window.toggleOpenGroup = toggleOpenGroup;
+
+    function expandAllOpenGroups() {
+      expandedOpenSymbols.clear();
+      derived.openPositions.forEach((p) => expandedOpenSymbols.add(p.symbol));
+      renderPositionTables();
+      updateSortIndicators();
+    }
+    window.expandAllOpenGroups = expandAllOpenGroups;
+
+    function collapseAllOpenGroups() {
+      expandedOpenSymbols.clear();
+      renderPositionTables();
+      updateSortIndicators();
+    }
+    window.collapseAllOpenGroups = collapseAllOpenGroups;
+
+    function extractOptionStrikes(description) {
+      const text = String(description || "").toUpperCase();
+      const strikes = [];
+
+      // Multi-leg sequences like 360/300 or 29530/29580/28710/28760
+      const seqMatches = text.match(/\d+(?:\.\d+)?(?:\/\d+(?:\.\d+)?)+/g) || [];
+      seqMatches.forEach((seq) => {
+        seq.split("/").forEach((part) => {
+          const n = Number(part);
+          if (!Number.isNaN(n)) strikes.push(n);
+        });
+      });
+
+      // Single-leg options like "170 Put"
+      if (!strikes.length) {
+        const single = text.match(/\b(\d+(?:\.\d+)?)\s*(PUT|CALL|PUTS|CALLS)\b/);
+        if (single) {
+          const n = Number(single[1]);
+          if (!Number.isNaN(n)) strikes.push(n);
+        }
+      }
+
+      const uniqueSorted = Array.from(new Set(strikes)).sort((a, b) => a - b);
+      return uniqueSorted.map((n) => String(n));
+    }
+
+    function instrumentKey(t) {
+      const symbol = (t.symbol || "").toUpperCase().trim();
+      const asset = t.assetType || "Stock";
+      const expiry = t.expiry || "";
+      const optType = (t.optionType || "").toUpperCase();
+
+      if (asset === "Option") {
+        const descStrikes = extractOptionStrikes(t.description);
+        const fallbackStrike = t.strike ? [String(Number(t.strike))] : [];
+        const normalizedStrikes = (descStrikes.length ? descStrikes : fallbackStrike).join("/");
+        // Normalized strike ordering lets open/close legs pair even when CSV leg order is reversed.
+        return [symbol, asset, expiry, optType, normalizedStrikes].join("|");
+      }
+
+      return [symbol, asset].join("|");
+    }
+
+    function getContractMultiplier(trade) {
+      if (trade.assetType === "Option") return 100;
+      if (trade.assetType === "Future") {
+        const custom = Number(trade.multiplier);
+        return custom > 0 ? custom : getDefaultFuturesMultiplier(trade.symbol);
+      }
+      return 1;
+    }
+
+    function getPairMultiplier(openTrade, closeTrade) {
+      if (openTrade.assetType === "Option" || closeTrade.assetType === "Option") return 100;
+      if (openTrade.assetType === "Future" || closeTrade.assetType === "Future") {
+        const openMult = Number(openTrade.multiplier);
+        if (openMult > 0) return openMult;
+        const closeMult = Number(closeTrade.multiplier);
+        if (closeMult > 0) return closeMult;
+        return getDefaultFuturesMultiplier(openTrade.symbol || closeTrade.symbol);
+      }
+      return 1;
+    }
+
+    function deriveData(sourceTrades) {
+      const cloned = sourceTrades.map((t) => ({
+        id: t.id || uid(),
+        date: t.date,
+        symbol: (t.symbol || "").toUpperCase().trim(),
+        action: t.action === "Sell" ? "Sell" : "Buy",
+        qty: Number(t.qty) || 0,
+        price: Number(t.price) || 0,
+        description: t.description || "",
+        assetType: t.assetType || "Stock",
+        multiplier: Number(t.multiplier) > 0 ? Number(t.multiplier) : null,
+        strike: t.strike || "",
+        expiry: t.expiry || "",
+        optionType: t.optionType || "",
+        status: "open",
+        calculated_pnl: 0,
+        entry_trade_id: null,
+        exit_trade_id: null
+      })).sort((a, b) => new Date(a.date) - new Date(b.date));
+
+      const byInstrument = new Map();
+      cloned.forEach((t) => {
+        const key = instrumentKey(t);
+        if (!byInstrument.has(key)) byInstrument.set(key, []);
+        byInstrument.get(key).push(t);
+      });
+
+      const pairs = [];
+      const openPositions = [];
+      for (const tradeList of byInstrument.values()) {
+        const openLong = [];
+        const openShort = [];
+
+        for (const trade of tradeList) {
+          let remaining = trade.qty;
+          if (trade.action === "Buy") {
+            while (remaining > 0 && openShort.length > 0) {
+              const lot = openShort[0];
+              const matched = Math.min(remaining, lot.remaining);
+              const multiplier = getPairMultiplier(lot.trade, trade);
+              const pnl = (lot.trade.price - trade.price) * matched * multiplier;
+              lot.trade.calculated_pnl += pnl;
+              trade.calculated_pnl += pnl;
+              const pair = {
+                symbol: trade.symbol,
+                assetType: trade.assetType,
+                qty: matched,
+                entryId: lot.trade.id,
+                exitId: trade.id,
+                entryDate: lot.trade.date,
+                exitDate: trade.date,
+                entryPrice: lot.trade.price,
+                exitPrice: trade.price,
+                multiplier,
+                pnl
+              };
+              if (!lot.trade.exit_trade_id) lot.trade.exit_trade_id = trade.id;
+              if (!trade.entry_trade_id) trade.entry_trade_id = lot.trade.id;
+              pairs.push(pair);
+              remaining -= matched;
+              lot.remaining -= matched;
+              if (lot.remaining === 0) openShort.shift();
+            }
+            if (remaining > 0) openLong.push({ trade, remaining });
+          } else {
+            while (remaining > 0 && openLong.length > 0) {
+              const lot = openLong[0];
+              const matched = Math.min(remaining, lot.remaining);
+              const multiplier = getPairMultiplier(lot.trade, trade);
+              const pnl = (trade.price - lot.trade.price) * matched * multiplier;
+              lot.trade.calculated_pnl += pnl;
+              trade.calculated_pnl += pnl;
+              const pair = {
+                symbol: trade.symbol,
+                assetType: trade.assetType,
+                qty: matched,
+                entryId: lot.trade.id,
+                exitId: trade.id,
+                entryDate: lot.trade.date,
+                exitDate: trade.date,
+                entryPrice: lot.trade.price,
+                exitPrice: trade.price,
+                multiplier,
+                pnl
+              };
+              if (!lot.trade.exit_trade_id) lot.trade.exit_trade_id = trade.id;
+              if (!trade.entry_trade_id) trade.entry_trade_id = lot.trade.id;
+              pairs.push(pair);
+              remaining -= matched;
+              lot.remaining -= matched;
+              if (lot.remaining === 0) openLong.shift();
+            }
+            if (remaining > 0) openShort.push({ trade, remaining });
+          }
+          trade._openQty = remaining;
+        }
+
+        openLong.forEach((lot) => {
+          lot.trade.status = "open";
+          openPositions.push({
+            symbol: lot.trade.symbol,
+            assetType: lot.trade.assetType,
+            side: "Long",
+            qty: lot.remaining,
+            multiplier: getContractMultiplier(lot.trade),
+            entryDate: lot.trade.date,
+            entryPrice: lot.trade.price
+          });
+        });
+        openShort.forEach((lot) => {
+          lot.trade.status = "open";
+          openPositions.push({
+            symbol: lot.trade.symbol,
+            assetType: lot.trade.assetType,
+            side: "Short",
+            qty: lot.remaining,
+            multiplier: getContractMultiplier(lot.trade),
+            entryDate: lot.trade.date,
+            entryPrice: lot.trade.price
+          });
+        });
+      }
+
+      const tradeOpenQty = new Map(cloned.map((t) => [t.id, t.qty]));
+      pairs.forEach((p) => {
+        tradeOpenQty.set(p.entryId, Math.max(0, (tradeOpenQty.get(p.entryId) || 0) - p.qty));
+        tradeOpenQty.set(p.exitId, Math.max(0, (tradeOpenQty.get(p.exitId) || 0) - p.qty));
+      });
+      cloned.forEach((t) => {
+        const remaining = tradeOpenQty.get(t.id) || 0;
+        t.status = remaining === 0 ? "closed" : (remaining < t.qty ? "partial" : "open");
+        t.openQty = remaining;
+      });
+
+      const closedPnl = pairs.map((p) => p.pnl);
+      const grossProfit = closedPnl.filter((x) => x > 0).reduce((a, b) => a + b, 0);
+      const grossLossAbs = Math.abs(closedPnl.filter((x) => x < 0).reduce((a, b) => a + b, 0));
+      const totalPnl = closedPnl.reduce((a, b) => a + b, 0);
+      const wins = closedPnl.filter((x) => x > 0).length;
+      const closedTrades = pairs.length;
+      const winRate = closedTrades ? (wins / closedTrades) * 100 : 0;
+      const profitFactor = grossLossAbs === 0 ? (grossProfit > 0 ? Number.POSITIVE_INFINITY : 0) : grossProfit / grossLossAbs;
+      const bestTrade = closedPnl.length ? Math.max(...closedPnl) : 0;
+      const worstTrade = closedPnl.length ? Math.min(...closedPnl) : 0;
+
+      const summaryMap = new Map();
+      pairs.forEach((p) => {
+        const key = p.symbol;
+        if (!summaryMap.has(key)) summaryMap.set(key, { symbol: key, trades: 0, wins: 0, totalPnl: 0, volume: 0 });
+        const s = summaryMap.get(key);
+        s.trades += 1;
+        s.totalPnl += p.pnl;
+        s.volume += p.qty;
+        if (p.pnl > 0) s.wins += 1;
+      });
+      const symbolSummary = Array.from(summaryMap.values()).map((s) => ({
+        symbol: s.symbol,
+        trades: s.trades,
+        winRate: s.trades ? (s.wins / s.trades) * 100 : 0,
+        avgPnl: s.trades ? s.totalPnl / s.trades : 0,
+        volume: s.volume,
+        totalPnl: s.totalPnl
+      })).sort((a, b) => b.totalPnl - a.totalPnl);
+
+      const sortedPairs = [...pairs].sort((a, b) => new Date(a.exitDate) - new Date(b.exitDate));
+      let running = 0;
+      const equity = sortedPairs.map((p) => {
+        running += p.pnl;
+        return { x: p.exitDate, y: running };
+      });
+
+      return {
+        trades: cloned,
+        pairs,
+        openPositions,
+        stats: { totalPnl, winRate, profitFactor, closedTrades, bestTrade, worstTrade },
+        symbolSummary,
+        equity
+      };
+    }
+
+    function applyFilters() {
+      const from = el.filterFrom.value ? new Date(el.filterFrom.value + "T00:00:00") : null;
+      const to = el.filterTo.value ? new Date(el.filterTo.value + "T23:59:59") : null;
+      const sym = el.filterSymbol.value.trim().toUpperCase();
+      const asset = el.filterAsset.value;
+      const pnlFilter = el.filterPnl.value;
+      const statusFilter = el.filterStatus.value;
+
+      return derived.trades.filter((t) => {
+        const dt = new Date(t.date);
+        if (from && dt < from) return false;
+        if (to && dt > to) return false;
+        if (sym && !t.symbol.includes(sym)) return false;
+        if (asset && t.assetType !== asset) return false;
+        if (pnlFilter === "profit" && !(t.calculated_pnl > 0)) return false;
+        if (pnlFilter === "loss" && !(t.calculated_pnl < 0)) return false;
+        if (pnlFilter === "open" && t.status === "closed") return false;
+        if (statusFilter !== "all" && t.status !== statusFilter) return false;
+        return true;
+      });
+    }
+
+    function renderStats() {
+      const s = derived.stats;
+      el.statTotalPnl.textContent = formatCurrency(s.totalPnl);
+      el.statTotalPnl.className = "text-xl font-semibold " + (s.totalPnl >= 0 ? "text-emerald-600" : "text-rose-600");
+      el.statWinRate.textContent = s.winRate.toFixed(2) + "%";
+      el.statProfitFactor.textContent = Number.isFinite(s.profitFactor) ? s.profitFactor.toFixed(2) : "Inf";
+      el.statClosedTrades.textContent = String(s.closedTrades || 0);
+      el.statBestTrade.textContent = formatCurrency(s.bestTrade);
+      el.statWorstTrade.textContent = formatCurrency(s.worstTrade);
+    }
+
+    function renderTradeTable() {
+      const filtered = applyFilters().slice().sort((a, b) => {
+        const { key, dir } = sortState.raw;
+        if (key === "date") return compareValues(a.date, b.date, dir, "date");
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        if (key === "status") return compareValues(a.status, b.status, dir, "string");
+        return compareValues(a.date, b.date, "desc", "date");
+      });
+      el.tradeCountBadge.textContent = filtered.length + " trades";
+      const selectedVisibleCount = filtered.reduce((acc, t) => acc + (selectedTradeIds.has(t.id) ? 1 : 0), 0);
+      if (selectedTradeIds.size > 0) {
+        el.bulkDeleteBtn.textContent = `Delete Selected (${selectedTradeIds.size})`;
+        el.bulkDeleteBtn.classList.remove("hidden");
+      } else {
+        el.bulkDeleteBtn.classList.add("hidden");
+      }
+      if (filtered.length > 0) {
+        el.selectAllTradesCheckbox.checked = selectedVisibleCount === filtered.length;
+        el.selectAllTradesCheckbox.indeterminate = selectedVisibleCount > 0 && selectedVisibleCount < filtered.length;
+      } else {
+        el.selectAllTradesCheckbox.checked = false;
+        el.selectAllTradesCheckbox.indeterminate = false;
+      }
+      el.tradeTableBody.innerHTML = filtered.map((t) => {
+        const pnlClass = t.calculated_pnl > 0 ? "text-emerald-600" : (t.calculated_pnl < 0 ? "text-rose-600" : "text-slate-500");
+        const statusClass = t.status === "closed" ? "bg-emerald-100 text-emerald-800" : (t.status === "partial" ? "bg-amber-100 text-amber-800" : "bg-blue-100 text-blue-800");
+        const descriptor = t.assetType === "Option" ? [t.optionType, t.expiry].filter(Boolean).join(" ") : t.description;
+        return `
+          <tr class="border-b hover:bg-slate-50">
+            <td class="p-2">
+              <input type="checkbox" ${selectedTradeIds.has(t.id) ? "checked" : ""} onchange="toggleTradeSelection('${t.id}', this.checked)" />
+            </td>
+            <td class="p-2">${formatDate(t.date)}</td>
+            <td class="p-2 font-medium">${t.symbol}</td>
+            <td class="p-2">${t.assetType}</td>
+            <td class="p-2">${t.action}</td>
+            <td class="p-2 text-right">${t.qty}</td>
+            <td class="p-2 text-right">${t.price.toFixed(4)}</td>
+            <td class="p-2 text-right ${pnlClass}">${formatCurrency(t.calculated_pnl)}</td>
+            <td class="p-2"><span class="text-xs px-2 py-1 rounded ${statusClass}">${t.status}</span></td>
+            <td class="p-2 text-right">
+              <button class="text-blue-600 hover:text-blue-800 text-xs mr-2" onclick="startEditTrade('${t.id}')">Edit</button>
+              <button class="text-rose-600 hover:text-rose-800 text-xs" onclick="deleteTrade('${t.id}')" title="${descriptor || "Delete"}">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    function renderPositionTables() {
+      const closedRows = derived.pairs.slice().sort((a, b) => {
+        const { key, dir } = sortState.closed;
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        if (key === "exitDate") return compareValues(a.exitDate, b.exitDate, dir, "date");
+        return compareValues(a.exitDate, b.exitDate, "desc", "date");
+      });
+      el.closedPairTableBody.innerHTML = closedRows.length ? closedRows.map((p) => {
+        const days = Math.max(0, Math.round((new Date(p.exitDate) - new Date(p.entryDate)) / (1000 * 60 * 60 * 24)));
+        const cls = p.pnl >= 0 ? "text-emerald-600" : "text-rose-600";
+        return `
+          <tr class="border-b">
+            <td class="p-2">${p.symbol} <span class="text-xs text-slate-500">(${p.assetType})</span></td>
+            <td class="p-2">${formatDate(p.entryDate)} @ ${p.entryPrice.toFixed(4)}</td>
+            <td class="p-2">${formatDate(p.exitDate)} @ ${p.exitPrice.toFixed(4)}</td>
+            <td class="p-2 text-right">${p.qty}</td>
+            <td class="p-2 text-right">${days}</td>
+            <td class="p-2 text-right ${cls}">${formatCurrency(p.pnl)}</td>
+          </tr>`;
+      }).join("") : `<tr><td class="p-2 text-slate-500" colspan="6">No closed trade pairs yet.</td></tr>`;
+
+      const openRows = derived.openPositions.slice().sort((a, b) => {
+        const { key, dir } = sortState.open;
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        if (key === "entryDate") return compareValues(a.entryDate, b.entryDate, dir, "date");
+        return compareValues(a.entryDate, b.entryDate, "desc", "date");
+      });
+      if (!openRows.length) {
+        el.openPairTableBody.innerHTML = `<tr><td class="p-2 text-slate-500" colspan="5">No open positions.</td></tr>`;
+      } else {
+        const grouped = new Map();
+        openRows.forEach((p) => {
+          if (!grouped.has(p.symbol)) grouped.set(p.symbol, []);
+          grouped.get(p.symbol).push(p);
+        });
+
+        let html = "";
+        for (const [symbol, items] of grouped.entries()) {
+          const totalQty = items.reduce((sum, x) => sum + (Number(x.qty) || 0), 0);
+          const latestEntry = items.reduce((latest, x) => (!latest || new Date(x.entryDate) > new Date(latest)) ? x.entryDate : latest, null);
+          const sideLabel = Array.from(new Set(items.map((x) => x.side))).join("/");
+          const isExpanded = expandedOpenSymbols.has(symbol);
+          const caret = isExpanded ? "▼" : "▶";
+          const encoded = encodeURIComponent(symbol);
+
+          html += `
+            <tr class="border-b bg-slate-50">
+              <td class="p-2 font-medium">
+                <button class="mr-2 text-slate-700 hover:text-slate-900" onclick="toggleOpenGroup('${encoded}')" title="Expand/collapse">${caret}</button>
+                ${symbol}
+              </td>
+              <td class="p-2">${sideLabel}</td>
+              <td class="p-2">${formatDate(latestEntry)}</td>
+              <td class="p-2 text-right">${totalQty}</td>
+              <td class="p-2 text-right text-slate-600">${items.length} txn</td>
+            </tr>
+          `;
+
+          if (isExpanded) {
+            html += items.map((p) => `
+              <tr class="border-b">
+                <td class="p-2 pl-8">${p.symbol} <span class="text-xs text-slate-500">(${p.assetType})</span></td>
+                <td class="p-2">${p.side}</td>
+                <td class="p-2">${formatDate(p.entryDate)}</td>
+                <td class="p-2 text-right">${p.qty}</td>
+                <td class="p-2 text-right">${Number(p.entryPrice).toFixed(4)}</td>
+              </tr>
+            `).join("");
+          }
+        }
+        el.openPairTableBody.innerHTML = html;
+      }
+    }
+
+    function renderSymbolSummary() {
+      const rows = derived.symbolSummary.slice().sort((a, b) => {
+        const { key, dir } = sortState.symbol;
+        if (key === "symbol") return compareValues(a.symbol, b.symbol, dir, "string");
+        return compareValues(a.totalPnl, b.totalPnl, "desc", "number");
+      });
+      el.symbolTableBody.innerHTML = rows.length ? rows.map((s) => `
+        <tr class="border-b">
+          <td class="p-2 font-medium">${s.symbol}</td>
+          <td class="p-2 text-right">${s.trades}</td>
+          <td class="p-2 text-right">${s.winRate.toFixed(2)}%</td>
+          <td class="p-2 text-right ${s.avgPnl >= 0 ? "text-emerald-600" : "text-rose-600"}">${formatCurrency(s.avgPnl)}</td>
+          <td class="p-2 text-right">${s.volume}</td>
+          <td class="p-2 text-right ${s.totalPnl >= 0 ? "text-emerald-600" : "text-rose-600"}">${formatCurrency(s.totalPnl)}</td>
+        </tr>
+      `).join("") : `<tr><td class="p-2 text-slate-500" colspan="6">No symbol performance data yet.</td></tr>`;
+    }
+
+    function renderChart() {
+      const ctx = document.getElementById("equityChart");
+      const labels = derived.equity.map((p) => formatDate(p.x));
+      const values = derived.equity.map((p) => p.y);
+      if (chart) chart.destroy();
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels,
+          datasets: [{
+            label: "Cumulative P&L",
+            data: values,
+            borderColor: "#0ea5e9",
+            backgroundColor: "rgba(14,165,233,0.12)",
+            fill: true,
+            tension: 0.2
+          }]
+        },
+        options: {
+          responsive: true,
+          plugins: { legend: { display: false } },
+          scales: { y: { ticks: { callback: (v) => "$" + Number(v).toFixed(0) } } }
+        }
+      });
+    }
+
+    function refreshAll() {
+      derived = deriveData(trades);
+      renderStats();
+      renderTradeTable();
+      renderPositionTables();
+      renderSymbolSummary();
+      renderChart();
+      updateSortIndicators();
+    }
+
+    function deleteTrade(id) {
+      trades = trades.filter((t) => t.id !== id);
+      selectedTradeIds.delete(id);
+      saveTrades();
+      refreshAll();
+      showToast("ok", "Trade deleted.");
+    }
+    window.deleteTrade = deleteTrade;
+
+    function startAddTrade() {
+      const form = document.getElementById("tradeForm");
+      form.reset();
+      editingTradeId = null;
+      el.editingTradeId.value = "";
+      el.tradeModalTitle.textContent = "Add Trade";
+      el.tradeSubmitBtn.textContent = "Save Trade";
+      el.exitDateWrap.classList.remove("hidden");
+      el.exitPriceWrap.classList.remove("hidden");
+      form.date.value = toLocalInputValue(new Date().toISOString());
+      updateMultiplierInputState(form);
+      openModal(document.getElementById("tradeModal"));
+    }
+
+    function startEditTrade(id) {
+      const trade = trades.find((t) => t.id === id);
+      if (!trade) {
+        showToast("error", "Trade not found.");
+        return;
+      }
+      const form = document.getElementById("tradeForm");
+      form.reset();
+      editingTradeId = id;
+      el.editingTradeId.value = id;
+      el.tradeModalTitle.textContent = "Edit Trade";
+      el.tradeSubmitBtn.textContent = "Update Trade";
+      el.exitDateWrap.classList.add("hidden");
+      el.exitPriceWrap.classList.add("hidden");
+      form.date.value = toLocalInputValue(trade.date || new Date().toISOString());
+      form.symbol.value = (trade.symbol || "").toUpperCase();
+      form.assetType.value = trade.assetType || "Stock";
+      form.action.value = trade.action || "Buy";
+      form.qty.value = trade.qty ?? "";
+      form.price.value = trade.price ?? "";
+      form.multiplier.value = Number(trade.multiplier) > 0 ? Number(trade.multiplier) : (trade.assetType === "Future" ? getDefaultFuturesMultiplier(trade.symbol) : "");
+      form.optionType.value = trade.optionType || "";
+      form.expiry.value = trade.expiry || "";
+      form.description.value = trade.description || "";
+      updateMultiplierInputState(form);
+      openModal(document.getElementById("tradeModal"));
+    }
+    window.startEditTrade = startEditTrade;
+
+    function updateMultiplierInputState(form) {
+      const isFuture = form.assetType.value === "Future";
+      form.multiplier.disabled = !isFuture;
+      if (isFuture) {
+        const current = Number(form.multiplier.value);
+        if (!(current > 0)) form.multiplier.value = getDefaultFuturesMultiplier(form.symbol.value);
+      } else {
+        form.multiplier.value = "";
+      }
+    }
+
+    function toggleTradeSelection(id, checked) {
+      if (checked) selectedTradeIds.add(id);
+      else selectedTradeIds.delete(id);
+      renderTradeTable();
+    }
+    window.toggleTradeSelection = toggleTradeSelection;
+
+    function toggleSelectAllVisible(checked) {
+      const visibleIds = applyFilters().map((t) => t.id);
+      if (checked) {
+        visibleIds.forEach((id) => selectedTradeIds.add(id));
+      } else {
+        visibleIds.forEach((id) => selectedTradeIds.delete(id));
+      }
+      renderTradeTable();
+    }
+    window.toggleSelectAllVisible = toggleSelectAllVisible;
+
+    function deleteSelectedTrades() {
+      if (!selectedTradeIds.size) return;
+      const ok = confirm(`Delete ${selectedTradeIds.size} selected trade(s)? This cannot be undone.`);
+      if (!ok) return;
+      trades = trades.filter((t) => !selectedTradeIds.has(t.id));
+      selectedTradeIds.clear();
+      saveTrades();
+      refreshAll();
+      showToast("ok", "Selected trades deleted.");
+    }
+
+    function openModal(modal) {
+      modal.classList.remove("hidden");
+      modal.classList.add("flex");
+    }
+
+    function closeModal(modal) {
+      modal.classList.add("hidden");
+      modal.classList.remove("flex");
+    }
+
+    function parseEtradeDate(dateStr) {
+      const trimmed = String(dateStr || "").trim();
+      const asNative = new Date(trimmed);
+      if (!Number.isNaN(asNative.getTime())) return asNative.toISOString();
+      const match = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4}),\s*(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)$/i);
+      if (!match) return null;
+      let mm = Number(match[1]) - 1;
+      let dd = Number(match[2]);
+      let yyyy = Number(match[3]);
+      let hh = Number(match[4]);
+      let min = Number(match[5]);
+      let ss = Number(match[6]);
+      const ap = match[7].toUpperCase();
+      if (ap === "PM" && hh !== 12) hh += 12;
+      if (ap === "AM" && hh === 12) hh = 0;
+      const dt = new Date(yyyy, mm, dd, hh, min, ss);
+      return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
+    }
+
+    function parseEtradeCSV(text) {
+      const lines = text.split(/\r?\n/).filter((l) => l.trim());
+      if (lines.length < 2) return [];
+      const headerRowIndex = lines.findIndex((line) => {
+        const cols = splitCSV(line).map((h) => h.trim().toLowerCase());
+        return cols.includes("symbol") && cols.includes("status") && cols.some((h) => h.includes("fill")) && cols.includes("description");
+      });
+      if (headerRowIndex < 0) {
+        throw new Error("Could not find E*TRADE header row.");
+      }
+      const header = splitCSV(lines[headerRowIndex]).map((h) => h.trim().toLowerCase());
+      const idx = {
+        symbol: header.findIndex((h) => h === "symbol"),
+        status: header.findIndex((h) => h === "status"),
+        fill: header.findIndex((h) => h.includes("fill")),
+        desc: header.findIndex((h) => h.includes("description")),
+        timestamp: header.findIndex((h) => h.includes("timestamp") || h === "time" || h.includes("date")),
+        action: header.findIndex((h) => h === "action")
+      };
+      if (Object.values(idx).some((i) => i < 0)) {
+        if (idx.symbol < 0 || idx.status < 0 || idx.fill < 0 || idx.desc < 0 || idx.timestamp < 0) {
+          throw new Error("CSV headers are missing required E*TRADE columns.");
+        }
+      }
+
+      const parsed = [];
+      for (let i = headerRowIndex + 1; i < lines.length; i++) {
+        const cols = splitCSV(lines[i]);
+        const status = (cols[idx.status] || "").trim().toLowerCase();
+        if (status && status !== "filled") continue;
+        const symbol = (cols[idx.symbol] || "").trim().toUpperCase();
+        const desc = (cols[idx.desc] || "").trim();
+        const fill = (cols[idx.fill] || "").trim();
+        const ts = parseEtradeDate(cols[idx.timestamp] || "");
+        const fillMatch = fill.match(/^([+-]?\d*\.?\d+)\s*@\s*([+-]?\d*\.?\d+)$/i);
+        if (!symbol || !fillMatch || !ts) continue;
+
+        const signedQty = Number(fillMatch[1]);
+        const qty = Math.abs(signedQty);
+        const price = Number(fillMatch[2]);
+        let action = signedQty < 0 ? "Sell" : "Buy";
+        if (idx.action >= 0) {
+          const csvAction = String(cols[idx.action] || "").trim();
+          if (/^sell$/i.test(csvAction)) action = "Sell";
+          if (/^buy$/i.test(csvAction)) action = "Buy";
+        } else if (/^\s*sell\b/i.test(desc)) {
+          action = "Sell";
+        } else if (/^\s*buy\b/i.test(desc)) {
+          action = "Buy";
+        } else if (/\bto open\b/i.test(desc)) {
+          action = "Sell";
+        } else if (/\bto close\b/i.test(desc)) {
+          action = "Buy";
+        }
+        const assetType = detectAssetType(symbol, desc);
+        const { optionType, expiry, strike } = parseOptionFields(symbol, desc);
+        const multiplier = assetType === "Future" ? getDefaultFuturesMultiplier(symbol) : null;
+
+        parsed.push({
+          id: uid(),
+          date: ts,
+          symbol,
+          action,
+          qty,
+          price,
+          description: desc,
+          assetType,
+          multiplier,
+          optionType,
+          expiry,
+          strike
+        });
+      }
+      return parsed;
+    }
+
+    function splitCSV(line) {
+      const out = [];
+      let cur = "";
+      let q = false;
+      for (let i = 0; i < line.length; i++) {
+        const c = line[i];
+        if (c === '"' && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else if (c === '"') {
+          q = !q;
+        } else if (c === "," && !q) {
+          out.push(cur);
+          cur = "";
+        } else {
+          cur += c;
+        }
+      }
+      out.push(cur);
+      return out;
+    }
+
+    function detectAssetType(symbol, desc) {
+      const text = `${symbol} ${desc}`;
+      const upper = text.toUpperCase();
+
+      // Options often include contract terms or strategy names, and can contain strike spreads like 46/42.
+      if (
+        /\b(CALL|PUT|VERTICAL|IRON CONDOR|CONDOR|SPREAD|STRADDLE|STRANGLE|BUTTERFLY)\b/.test(upper) ||
+        /\b[A-Z]{3}-\d{1,2}-\d{2}\b/.test(upper) ||
+        /\b\d{6}[CP]\d{8}\b/.test(upper)
+      ) return "Option";
+
+      // Futures are typically slash-prefixed symbols (/ES, /NQ) or explicitly marked as futures.
+      if (/^\/[A-Z0-9]+/.test((symbol || "").toUpperCase()) || /\b(FUTURE|FUTURES|FUT)\b/.test(upper)) return "Future";
+
+      return "Stock";
+    }
+
+    function parseOptionFields(symbol, desc) {
+      const text = (symbol + " " + desc).toUpperCase();
+      const optionType = text.includes(" CALL") ? "Call" : (text.includes(" PUT") ? "Put" : "");
+      const expiryMatch = text.match(/\b(\d{2}\/\d{2}\/\d{4})\b/) || text.match(/\b([A-Z]{3}-\d{1,2}-\d{2})\b/);
+      let expiry = "";
+      if (expiryMatch) {
+        if (expiryMatch[1].includes("/")) {
+          const [m, d, y] = expiryMatch[1].split("/");
+          expiry = `${y}-${m}-${d}`;
+        } else {
+          const dt = new Date(expiryMatch[1]);
+          if (!Number.isNaN(dt.getTime())) {
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, "0");
+            const d = String(dt.getDate()).padStart(2, "0");
+            expiry = `${y}-${m}-${d}`;
+          }
+        }
+      }
+      const strikeMatch = text.match(/\b(\d+(\.\d+)?)\s*(CALL|PUT)\b/) || text.match(/\b(\d+(\.\d+)?)\s*PUTS?\b/) || text.match(/\b(\d+(\.\d+)?)\s*CALLS?\b/);
+      const strike = strikeMatch ? strikeMatch[1] : "";
+      return { optionType, expiry, strike };
+    }
+
+    function formatEtradeTime(iso) {
+      const dt = new Date(iso);
+      const mm = String(dt.getMonth() + 1).padStart(2, "0");
+      const dd = String(dt.getDate()).padStart(2, "0");
+      const yyyy = dt.getFullYear();
+      let hh = dt.getHours();
+      const min = String(dt.getMinutes()).padStart(2, "0");
+      const ss = String(dt.getSeconds()).padStart(2, "0");
+      const ap = hh >= 12 ? "PM" : "AM";
+      hh = hh % 12;
+      if (hh === 0) hh = 12;
+      return `${mm}/${dd}/${yyyy}, ${hh}:${min}:${ss} ${ap}`;
+    }
+
+    function toLocalInputValue(iso) {
+      const dt = new Date(iso);
+      const y = dt.getFullYear();
+      const m = String(dt.getMonth() + 1).padStart(2, "0");
+      const d = String(dt.getDate()).padStart(2, "0");
+      const h = String(dt.getHours()).padStart(2, "0");
+      const min = String(dt.getMinutes()).padStart(2, "0");
+      return `${y}-${m}-${d}T${h}:${min}`;
+    }
+
+    function openImportWizard() {
+      importState = { step: 1, parsedTrades: [], duplicates: 0 };
+      document.getElementById("csvInput").value = "";
+      updateImportStep();
+      openModal(document.getElementById("importModal"));
+    }
+
+    function updateImportStep() {
+      document.getElementById("importStepLabel").textContent = `Step ${importState.step} of 3: ` +
+        (importState.step === 1 ? "Upload CSV" : (importState.step === 2 ? "Review & Validate" : "Confirm Import"));
+      document.getElementById("importStep1").classList.toggle("hidden", importState.step !== 1);
+      document.getElementById("importStep2").classList.toggle("hidden", importState.step !== 2);
+      document.getElementById("importStep3").classList.toggle("hidden", importState.step !== 3);
+      document.getElementById("importBackBtn").classList.toggle("hidden", importState.step === 1);
+      document.getElementById("importNextBtn").textContent = importState.step === 3 ? "Import" : "Next";
+    }
+
+    function handleCsvSelected(file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const parsed = parseEtradeCSV(String(reader.result || ""));
+          importState.parsedTrades = parsed;
+          if (!parsed.length) throw new Error("No valid filled trades found.");
+
+          const existingKeys = new Set(trades.map((t) => [t.date, t.symbol, t.action, t.qty, t.price].join("|")));
+          const duplicateCount = parsed.reduce((count, t) => count + (existingKeys.has([t.date, t.symbol, t.action, t.qty, t.price].join("|")) ? 1 : 0), 0);
+          importState.duplicates = duplicateCount;
+
+          document.getElementById("importValidation").innerHTML =
+            `<div class="text-emerald-700">Valid rows: ${parsed.length}</div>
+             <div class="text-amber-700">Potential duplicates: ${duplicateCount}</div>`;
+          document.getElementById("importPreviewBody").innerHTML = parsed.slice(0, 50).map((t) => `
+            <tr class="border-b">
+              <td class="p-2">${formatDate(t.date)}</td>
+              <td class="p-2">${t.symbol}</td>
+              <td class="p-2">${t.action}</td>
+              <td class="p-2 text-right">${t.qty}</td>
+              <td class="p-2 text-right">${t.price.toFixed(4)}</td>
+              <td class="p-2">${t.assetType}</td>
+            </tr>
+          `).join("");
+          showToast("ok", "CSV parsed successfully.");
+        } catch (err) {
+          importState.parsedTrades = [];
+          document.getElementById("importValidation").innerHTML = `<div class="text-rose-700">${err.message}</div>`;
+          showToast("error", err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function runImport() {
+      const loading = document.getElementById("importLoading");
+      loading.classList.remove("hidden");
+      setTimeout(async () => {
+        const existingKeys = new Set(trades.map((t) => [t.date, t.symbol, t.action, t.qty, t.price].join("|")));
+        const newRows = importState.parsedTrades.filter((t) => !existingKeys.has([t.date, t.symbol, t.action, t.qty, t.price].join("|")));
+        trades = trades.concat(newRows);
+        saveTrades();
+        if (cloudSyncTimer) {
+          clearTimeout(cloudSyncTimer);
+          cloudSyncTimer = null;
+        }
+        const syncResult = await syncToGoogleSheet({ silent: false });
+        refreshAll();
+        closeModal(document.getElementById("importModal"));
+        loading.classList.add("hidden");
+        if (syncResult && syncResult.ok) {
+          showToast("ok", `Imported ${newRows.length} new trades.`);
+        } else {
+          showToast("error", `Imported ${newRows.length} locally, but Google sync failed.`);
+        }
+      }, 350);
+    }
+
+    function exportCsv() {
+      const rows = [
+        ["Symbol", "Status", "Fill", "Description", "Market", "Time", "Account", "ID", "Action", "AssetType", "Multiplier", "OptionType", "Expiry", "Strike", "CalculatedPnL", "OpenQty"]
+      ];
+      deriveData(trades).trades.forEach((t) => {
+        const baseDesc = (t.description || "").trim();
+        const prefixedDesc = /^(buy|sell|trade)\b/i.test(baseDesc) ? baseDesc : `${t.action} ${baseDesc}`.trim();
+        rows.push([
+          t.symbol,
+          "Filled",
+          `${t.qty} @ ${Number(t.price).toFixed(4)}`,
+          prefixedDesc,
+          "",
+          formatEtradeTime(t.date),
+          "",
+          t.id,
+          t.action,
+          t.assetType,
+          t.assetType === "Future" ? getContractMultiplier(t) : "",
+          t.optionType || "",
+          t.expiry || "",
+          t.strike || "",
+          Number(t.calculated_pnl || 0).toFixed(2),
+          t.openQty ?? ""
+        ]);
+      });
+      const csv = rows.map((r) => r.map(escapeCsv).join(",")).join("\n");
+      downloadBlob(csv, "text/csv;charset=utf-8;", `trade-log-etrade-compatible-${Date.now()}.csv`);
+      showToast("ok", "CSV export generated (E*TRADE-compatible format).");
+    }
+
+    function exportJson() {
+      const payload = JSON.stringify({ exportedAt: new Date().toISOString(), trades }, null, 2);
+      downloadBlob(payload, "application/json", `trade-log-backup-${Date.now()}.json`);
+      showToast("ok", "JSON backup generated.");
+    }
+
+    function escapeCsv(v) {
+      const s = String(v ?? "");
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function downloadBlob(text, type, filename) {
+      const blob = new Blob([text], { type });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function wireEvents() {
+      document.getElementById("openAddTradeBtn").addEventListener("click", startAddTrade);
+      document.getElementById("analyzeTradesBtn").addEventListener("click", showTradeAnalysis);
+      document.getElementById("closeTradeModalBtn").addEventListener("click", () => closeModal(document.getElementById("tradeModal")));
+      document.getElementById("cancelTradeBtn").addEventListener("click", () => closeModal(document.getElementById("tradeModal")));
+      document.getElementById("closeAnalysisModalBtn").addEventListener("click", () => closeModal(document.getElementById("analysisModal")));
+      document.getElementById("closeAnalysisFooterBtn").addEventListener("click", () => closeModal(document.getElementById("analysisModal")));
+      document.getElementById("rerunAnalysisBtn").addEventListener("click", showTradeAnalysis);
+      document.getElementById("tradeForm").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const f = e.target;
+        const trade = {
+          id: uid(),
+          date: new Date(f.date.value).toISOString(),
+          symbol: (f.symbol.value || "").toUpperCase().trim(),
+          assetType: f.assetType.value,
+          action: f.action.value,
+          qty: Number(f.qty.value),
+          price: Number(f.price.value),
+          multiplier: f.assetType.value === "Future"
+            ? (Number(f.multiplier.value) > 0 ? Number(f.multiplier.value) : getDefaultFuturesMultiplier(f.symbol.value))
+            : null,
+          optionType: f.optionType.value || "",
+          expiry: f.expiry.value || "",
+          strike: "",
+          description: f.description.value || ""
+        };
+        const exitDateRaw = (f.exitDate && f.exitDate.value) ? f.exitDate.value : "";
+        const exitPriceRaw = (f.exitPrice && f.exitPrice.value) ? f.exitPrice.value : "";
+        const hasExitDate = Boolean(exitDateRaw);
+        const hasExitPrice = Boolean(exitPriceRaw);
+        const hasExitPair = hasExitDate || hasExitPrice;
+
+        if (!trade.symbol || !trade.qty || !trade.price || !trade.date) {
+          showToast("error", "Please provide valid trade values.");
+          return;
+        }
+        if (!editingTradeId && hasExitPair && !(hasExitDate && hasExitPrice)) {
+          showToast("error", "Provide both exit date/time and exit price, or leave both empty.");
+          return;
+        }
+        if (editingTradeId) {
+          const index = trades.findIndex((t) => t.id === editingTradeId);
+          if (index < 0) {
+            showToast("error", "Trade not found.");
+            return;
+          }
+          const existing = trades[index];
+          trades[index] = {
+            ...existing,
+            ...trade,
+            id: existing.id
+          };
+          editingTradeId = null;
+          el.editingTradeId.value = "";
+          el.tradeModalTitle.textContent = "Add Trade";
+          el.tradeSubmitBtn.textContent = "Save Trade";
+          showToast("ok", "Trade updated.");
+        } else {
+          if (hasExitDate && hasExitPrice) {
+            const exitTrade = {
+              ...trade,
+              id: uid(),
+              date: new Date(exitDateRaw).toISOString(),
+              price: Number(exitPriceRaw),
+              action: trade.action === "Buy" ? "Sell" : "Buy",
+              description: trade.description
+                ? `${trade.description} (auto exit)`
+                : "Auto-generated exit"
+            };
+            if (!exitTrade.price || !exitTrade.date) {
+              showToast("error", "Please provide valid exit values.");
+              return;
+            }
+            trades.push(trade, exitTrade);
+            showToast("ok", "Entry and exit trades added.");
+          } else {
+            trades.push(trade);
+            showToast("ok", "Trade added.");
+          }
+        }
+        saveTrades();
+        refreshAll();
+        closeModal(document.getElementById("tradeModal"));
+      });
+      const tradeForm = document.getElementById("tradeForm");
+      tradeForm.assetType.addEventListener("change", () => updateMultiplierInputState(tradeForm));
+      tradeForm.symbol.addEventListener("input", () => {
+        if (tradeForm.assetType.value === "Future") {
+          const current = Number(tradeForm.multiplier.value);
+          if (!(current > 0)) tradeForm.multiplier.value = getDefaultFuturesMultiplier(tradeForm.symbol.value);
+        }
+      });
+
+      document.getElementById("openImportBtn").addEventListener("click", openImportWizard);
+      document.getElementById("closeImportModalBtn").addEventListener("click", () => closeModal(document.getElementById("importModal")));
+      document.getElementById("csvInput").addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) handleCsvSelected(e.target.files[0]);
+      });
+      document.getElementById("importBackBtn").addEventListener("click", () => {
+        importState.step = Math.max(1, importState.step - 1);
+        updateImportStep();
+      });
+      document.getElementById("importNextBtn").addEventListener("click", () => {
+        if (importState.step === 1) {
+          if (!importState.parsedTrades.length) return showToast("error", "Please choose and parse a valid CSV first.");
+          importState.step = 2;
+          updateImportStep();
+        } else if (importState.step === 2) {
+          document.getElementById("importSummary").textContent =
+            `Ready to import ${importState.parsedTrades.length} rows. Potential duplicates: ${importState.duplicates}. Duplicates are skipped.`;
+          importState.step = 3;
+          updateImportStep();
+        } else {
+          runImport();
+        }
+      });
+
+      document.getElementById("exportCsvBtn").addEventListener("click", exportCsv);
+      document.getElementById("exportJsonBtn").addEventListener("click", exportJson);
+      document.getElementById("restoreJsonBtn").addEventListener("click", () => document.getElementById("restoreJsonInput").click());
+      document.getElementById("restoreJsonInput").addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const obj = JSON.parse(String(reader.result || "{}"));
+            if (!obj || !Array.isArray(obj.trades)) throw new Error("Invalid backup format.");
+            trades = obj.trades;
+            saveTrades();
+            refreshAll();
+            showToast("ok", "Backup restored.");
+          } catch (err) {
+            showToast("error", err.message);
+          }
+        };
+        reader.readAsText(file);
+      });
+
+      document.getElementById("clearAllBtn").addEventListener("click", () => {
+        const ok = confirm("Delete all stored trades? This cannot be undone.");
+        if (!ok) return;
+        trades = [];
+        selectedTradeIds.clear();
+        saveTrades();
+        refreshAll();
+        showToast("ok", "All trade data cleared.");
+      });
+      document.getElementById("expandAllOpenBtn").addEventListener("click", expandAllOpenGroups);
+      document.getElementById("collapseAllOpenBtn").addEventListener("click", collapseAllOpenGroups);
+      el.bulkDeleteBtn.addEventListener("click", deleteSelectedTrades);
+      el.selectAllTradesCheckbox.addEventListener("change", (e) => toggleSelectAllVisible(e.target.checked));
+
+      [el.filterFrom, el.filterTo, el.filterSymbol, el.filterAsset, el.filterPnl, el.filterStatus].forEach((node) => {
+        node.addEventListener("input", renderTradeTable);
+        node.addEventListener("change", renderTradeTable);
+      });
+      document.getElementById("resetFiltersBtn").addEventListener("click", () => {
+        el.filterFrom.value = "";
+        el.filterTo.value = "";
+        el.filterSymbol.value = "";
+        el.filterAsset.value = "";
+        el.filterPnl.value = "all";
+        el.filterStatus.value = "all";
+        renderTradeTable();
+      });
+    }
+
+    async function initializeCloudSync() {
+      if (hasPendingSync()) {
+        const syncResult = await syncToGoogleSheet({ silent: true });
+        if (!syncResult || !syncResult.ok) {
+          showToast("error", "Local trades could not sync to Google Sheet yet. Keeping local data.");
+        } else {
+          await loadFromGoogleSheet({ silent: true });
+        }
+      } else {
+        await loadFromGoogleSheet({ silent: true });
+      }
+      setInterval(() => {
+        if (hasPendingSync()) syncToGoogleSheet({ silent: true });
+      }, 15000);
+    }
+
+    loadTrades();
+    wireEvents();
+    refreshAll();
+    initializeCloudSync();
+  </script>
+</body>
+</html>
