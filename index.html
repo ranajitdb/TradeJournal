@@ -23,7 +23,7 @@
           <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
           <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
           <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
-          <button id="logoutBtn" class="px-3 py-2 text-sm rounded bg-slate-200 text-slate-800 hover:bg-slate-300">Logout</button>
+          <a id="logoutLink" href="#" class="px-3 py-2 text-sm rounded text-blue-700 hover:text-blue-900 underline underline-offset-2">Logout</a>
           <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
         </div>
       </div>
@@ -1871,7 +1871,9 @@
         }
       });
 
-      document.getElementById("logoutBtn").addEventListener("click", () => {
+      const logoutNode = document.getElementById("logoutLink") || document.getElementById("logoutBtn");
+      logoutNode.addEventListener("click", (e) => {
+        e.preventDefault();
         clearSessionToken();
         trades = [];
         selectedTradeIds.clear();
