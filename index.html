@@ -15,15 +15,18 @@
           <h1 class="text-3xl font-bold">Trade Journal Portal</h1>
           <p class="text-slate-600">Stocks, options, and futures tracking with E*TRADE import.</p>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button id="openAddTradeBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Add Trade</button>
-          <button id="openImportBtn" class="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">Import E*TRADE CSV</button>
-          <button id="analyzeTradesBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Trade Analysis</button>
-          <button id="exportCsvBtn" class="px-3 py-2 text-sm rounded bg-slate-800 text-white hover:bg-slate-900">Export CSV</button>
-          <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
-          <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
-          <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
-          <div class="basis-full flex justify-end">
+        <div class="flex flex-col items-stretch md:items-end gap-2">
+          <div id="journalHeaderActions" class="flex flex-wrap gap-2">
+            <button id="openAddTradeBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">Add Trade</button>
+            <button id="openImportBtn" class="px-3 py-2 text-sm rounded bg-emerald-600 text-white hover:bg-emerald-700">Import E*TRADE CSV</button>
+            <button id="analyzeTradesBtn" class="px-3 py-2 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700">Trade Analysis</button>
+            <button id="exportCsvBtn" class="px-3 py-2 text-sm rounded bg-slate-800 text-white hover:bg-slate-900">Export CSV</button>
+            <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
+            <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
+            <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
+            <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
+          </div>
+          <div class="flex justify-end">
             <button id="logoutLink" type="button" title="Logout" aria-label="Logout" class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
@@ -32,11 +35,18 @@
               </svg>
             </button>
           </div>
-          <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
         </div>
       </div>
     </header>
 
+    <section class="mb-6">
+      <div class="inline-flex rounded-lg border bg-white p-1">
+        <button id="journalTabBtn" class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white">Journal</button>
+        <button id="ideasTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Ideas & Notes</button>
+      </div>
+    </section>
+
+    <div id="journalTab" class="space-y-6">
     <section class="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
       <div class="bg-white rounded-lg border p-3">
         <div class="text-xs text-slate-500">Total P&L</div>
@@ -233,6 +243,158 @@
         <canvas id="equityChart" height="240"></canvas>
       </div>
     </section>
+    </div>
+
+    <section id="ideasTab" class="hidden space-y-6">
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Total Ideas</div>
+          <div id="ideaStatTotal" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Watching</div>
+          <div id="ideaStatWatching" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Active</div>
+          <div id="ideaStatActive" class="text-xl font-semibold">0</div>
+        </div>
+        <div class="bg-white rounded-lg border p-3">
+          <div class="text-xs text-slate-500">Archived</div>
+          <div id="ideaStatArchived" class="text-xl font-semibold">0</div>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-4">
+        <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div class="flex flex-wrap gap-2">
+            <button id="newIdeaBtn" class="px-3 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700">New Idea</button>
+            <button id="deleteIdeaBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Delete Idea</button>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <input id="ideaSearchInput" type="text" placeholder="Search title, symbol, tags" class="border rounded px-2 py-2 text-sm w-64" />
+            <select id="ideaStatusFilter" class="border rounded px-2 py-2 text-sm">
+              <option value="all">All statuses</option>
+              <option value="Watching">Watching</option>
+              <option value="Planned">Planned</option>
+              <option value="Active">Active</option>
+              <option value="Closed">Closed</option>
+              <option value="Archived">Archived</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <section class="grid grid-cols-1 xl:grid-cols-[320px,1fr] gap-6">
+        <div class="bg-white rounded-lg border p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="font-semibold">Idea Board</h2>
+            <span id="ideaCountBadge" class="text-xs px-2 py-1 rounded bg-slate-100">0 ideas</span>
+          </div>
+          <div id="ideaList" class="space-y-2 max-h-[760px] overflow-auto"></div>
+        </div>
+
+        <div class="bg-white rounded-lg border p-4">
+          <div id="ideaEmptyState" class="text-sm text-slate-500 py-16 text-center">
+            Create a trade idea to capture setup notes, catalysts, entries, risks, and lessons.
+          </div>
+          <form id="ideaForm" class="hidden space-y-4">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <h2 id="ideaEditorTitle" class="font-semibold text-lg">Trade Idea</h2>
+                <p class="text-xs text-slate-500">Session-only for now. Notes stay in this browser session until you close it.</p>
+              </div>
+              <label class="inline-flex items-center gap-2 text-sm text-slate-600">
+                <input id="ideaPinned" name="pinned" type="checkbox" class="rounded" />
+                Pin
+              </label>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-500">Title</label>
+                <input id="ideaTitle" name="title" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Symbol</label>
+                <input id="ideaSymbol" name="symbol" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Status</label>
+                <select id="ideaStatus" name="status" class="w-full border rounded px-2 py-2 text-sm">
+                  <option value="Watching">Watching</option>
+                  <option value="Planned">Planned</option>
+                  <option value="Active">Active</option>
+                  <option value="Closed">Closed</option>
+                  <option value="Archived">Archived</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Asset Type</label>
+                <select id="ideaAssetType" name="assetType" class="w-full border rounded px-2 py-2 text-sm">
+                  <option value="Stock">Stock</option>
+                  <option value="Option">Option</option>
+                  <option value="Future">Future</option>
+                  <option value="Mixed">Mixed</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Strategy / Setup</label>
+                <input id="ideaStrategy" name="strategy" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Priority</label>
+                <select id="ideaPriority" name="priority" class="w-full border rounded px-2 py-2 text-sm">
+                  <option value="Low">Low</option>
+                  <option value="Normal">Normal</option>
+                  <option value="High">High</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Catalyst / Event Date</label>
+                <input id="ideaCatalystDate" name="catalystDate" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Tags</label>
+                <input id="ideaTags" name="tags" type="text" placeholder="earnings, breakout, swing" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Entry Idea</label>
+                <input id="ideaEntry" name="entryIdea" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Risk / Reward</label>
+                <input id="ideaRiskReward" name="riskReward" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Stop</label>
+                <input id="ideaStop" name="stop" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Target</label>
+                <input id="ideaTarget" name="target" type="text" class="w-full border rounded px-2 py-2 text-sm" />
+              </div>
+            </div>
+
+            <div>
+              <label class="text-xs text-slate-500">Trade Thesis</label>
+              <textarea id="ideaThesis" name="thesis" rows="4" class="w-full border rounded px-2 py-2 text-sm"></textarea>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="text-xs text-slate-500">Execution / Notes</label>
+                <textarea id="ideaNotes" name="notes" rows="8" class="w-full border rounded px-2 py-2 text-sm"></textarea>
+              </div>
+              <div>
+                <label class="text-xs text-slate-500">Post-trade Lessons</label>
+                <textarea id="ideaLessons" name="lessons" rows="8" class="w-full border rounded px-2 py-2 text-sm"></textarea>
+              </div>
+            </div>
+          </form>
+        </div>
+      </section>
+    </section>
   </div>
 
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
@@ -399,6 +561,7 @@
     const STORAGE_KEY = "tradelog_etrade_data";
     const PENDING_SYNC_KEY = "tradelog_pending_sync";
     const SESSION_TOKEN_STORAGE = "tradelog_session_token";
+    const IDEAS_SESSION_KEY = "tradelog_ideas_session";
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzG-W6H_UhkWD6Pu4f6zTLoEqoYTbSMeJfHUTzXGlFn34-5E4I9XyMrOVGuG7NlXG2p/exec";
     const GAS_SHEET_NAME = "TradeLog";
     const DEFAULT_FUTURES_MULTIPLIERS = {
@@ -426,8 +589,17 @@
     };
     let chart = null;
     let importState = { step: 1, parsedTrades: [], duplicates: 0 };
+    let activeTab = "journal";
+    let ideas = [];
+    let selectedIdeaId = null;
 
     const el = {
+      appRoot: document.getElementById("appRoot"),
+      journalHeaderActions: document.getElementById("journalHeaderActions"),
+      journalTab: document.getElementById("journalTab"),
+      ideasTab: document.getElementById("ideasTab"),
+      journalTabBtn: document.getElementById("journalTabBtn"),
+      ideasTabBtn: document.getElementById("ideasTabBtn"),
       tradeTableBody: document.getElementById("tradeTableBody"),
       closedPairTableBody: document.getElementById("closedPairTableBody"),
       openPairTableBody: document.getElementById("openPairTableBody"),
@@ -455,7 +627,18 @@
       analysisIssues: document.getElementById("analysisIssues"),
       analysisNotes: document.getElementById("analysisNotes"),
       exitDateWrap: document.getElementById("exitDateWrap"),
-      exitPriceWrap: document.getElementById("exitPriceWrap")
+      exitPriceWrap: document.getElementById("exitPriceWrap"),
+      ideaStatTotal: document.getElementById("ideaStatTotal"),
+      ideaStatWatching: document.getElementById("ideaStatWatching"),
+      ideaStatActive: document.getElementById("ideaStatActive"),
+      ideaStatArchived: document.getElementById("ideaStatArchived"),
+      ideaCountBadge: document.getElementById("ideaCountBadge"),
+      ideaList: document.getElementById("ideaList"),
+      ideaEmptyState: document.getElementById("ideaEmptyState"),
+      ideaForm: document.getElementById("ideaForm"),
+      ideaEditorTitle: document.getElementById("ideaEditorTitle"),
+      ideaSearchInput: document.getElementById("ideaSearchInput"),
+      ideaStatusFilter: document.getElementById("ideaStatusFilter")
     };
 
     function uid() {
@@ -501,6 +684,203 @@
       document.getElementById("loginGate").classList.add("hidden");
       document.getElementById("appRoot").classList.remove("hidden");
       document.getElementById("loginError").textContent = "";
+    }
+
+    function createIdeaTemplate() {
+      const now = new Date().toISOString();
+      return {
+        id: uid(),
+        title: "",
+        symbol: "",
+        status: "Watching",
+        assetType: "Stock",
+        strategy: "",
+        priority: "Normal",
+        catalystDate: "",
+        tags: "",
+        entryIdea: "",
+        riskReward: "",
+        stop: "",
+        target: "",
+        thesis: "",
+        notes: "",
+        lessons: "",
+        pinned: false,
+        createdAt: now,
+        updatedAt: now
+      };
+    }
+
+    function loadIdeas() {
+      try {
+        const raw = sessionStorage.getItem(IDEAS_SESSION_KEY);
+        ideas = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(ideas)) ideas = [];
+      } catch (err) {
+        ideas = [];
+      }
+      if (selectedIdeaId && ideas.some((idea) => idea.id === selectedIdeaId)) return;
+      selectedIdeaId = ideas.length ? ideas[0].id : null;
+    }
+
+    function saveIdeas() {
+      sessionStorage.setItem(IDEAS_SESSION_KEY, JSON.stringify(ideas));
+    }
+
+    function getSelectedIdea() {
+      return ideas.find((idea) => idea.id === selectedIdeaId) || null;
+    }
+
+    function formatIdeaDate(iso) {
+      if (!iso) return "-";
+      return new Date(iso).toLocaleDateString();
+    }
+
+    function ideaStatusClass(status) {
+      if (status === "Active") return "bg-emerald-100 text-emerald-700";
+      if (status === "Planned") return "bg-blue-100 text-blue-700";
+      if (status === "Closed") return "bg-slate-200 text-slate-700";
+      if (status === "Archived") return "bg-amber-100 text-amber-700";
+      return "bg-violet-100 text-violet-700";
+    }
+
+    function setActiveTab(tab) {
+      activeTab = tab === "ideas" ? "ideas" : "journal";
+      const isJournal = activeTab === "journal";
+      el.journalTab.classList.toggle("hidden", !isJournal);
+      el.ideasTab.classList.toggle("hidden", isJournal);
+      el.journalHeaderActions.classList.toggle("hidden", !isJournal);
+      el.journalTabBtn.className = `px-4 py-2 text-sm rounded-md ${isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      el.ideasTabBtn.className = `px-4 py-2 text-sm rounded-md ${!isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      if (!isJournal) renderIdeasWorkspace();
+    }
+
+    function renderIdeasWorkspace() {
+      const search = String(el.ideaSearchInput.value || "").trim().toLowerCase();
+      const statusFilter = el.ideaStatusFilter.value || "all";
+      const filteredIdeas = ideas
+        .filter((idea) => {
+          const matchesStatus = statusFilter === "all" || idea.status === statusFilter;
+          const haystack = `${idea.title} ${idea.symbol} ${idea.tags} ${idea.strategy} ${idea.notes}`.toLowerCase();
+          const matchesSearch = !search || haystack.includes(search);
+          return matchesStatus && matchesSearch;
+        })
+        .sort((a, b) => {
+          if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+          return new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0);
+        });
+
+      el.ideaStatTotal.textContent = String(ideas.length);
+      el.ideaStatWatching.textContent = String(ideas.filter((idea) => idea.status === "Watching").length);
+      el.ideaStatActive.textContent = String(ideas.filter((idea) => idea.status === "Active").length);
+      el.ideaStatArchived.textContent = String(ideas.filter((idea) => idea.status === "Archived").length);
+      el.ideaCountBadge.textContent = `${filteredIdeas.length} ideas`;
+
+      if (!filteredIdeas.some((idea) => idea.id === selectedIdeaId)) {
+        selectedIdeaId = filteredIdeas.length ? filteredIdeas[0].id : null;
+      }
+
+      el.ideaList.innerHTML = filteredIdeas.length ? filteredIdeas.map((idea) => {
+        const selected = idea.id === selectedIdeaId;
+        return `
+          <button type="button" onclick="selectIdea('${idea.id}')" class="w-full text-left border rounded-lg p-3 transition ${selected ? "border-slate-900 bg-slate-50" : "hover:bg-slate-50"}">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <div class="font-medium text-sm">${idea.title || "Untitled idea"}</div>
+                <div class="text-xs text-slate-500 mt-1">${(idea.symbol || "-").toUpperCase()} ${idea.strategy ? "&middot; " + idea.strategy : ""}</div>
+              </div>
+              <div class="text-right">
+                ${idea.pinned ? '<div class="text-amber-500 text-xs">PINNED</div>' : ""}
+                <div class="text-[11px] text-slate-400">${formatIdeaDate(idea.updatedAt)}</div>
+              </div>
+            </div>
+            <div class="flex items-center gap-2 mt-3 flex-wrap">
+              <span class="text-[11px] px-2 py-1 rounded ${ideaStatusClass(idea.status)}">${idea.status}</span>
+              <span class="text-[11px] px-2 py-1 rounded bg-slate-100 text-slate-600">${idea.priority}</span>
+            </div>
+          </button>
+        `;
+      }).join("") : `<div class="text-sm text-slate-500 py-6 text-center">No ideas match the current filter.</div>`;
+
+      const selectedIdea = getSelectedIdea();
+      if (!selectedIdea) {
+        el.ideaEmptyState.classList.remove("hidden");
+        el.ideaForm.classList.add("hidden");
+        return;
+      }
+
+      el.ideaEmptyState.classList.add("hidden");
+      el.ideaForm.classList.remove("hidden");
+      el.ideaEditorTitle.textContent = selectedIdea.title || "Trade Idea";
+      document.getElementById("ideaTitle").value = selectedIdea.title || "";
+      document.getElementById("ideaSymbol").value = selectedIdea.symbol || "";
+      document.getElementById("ideaStatus").value = selectedIdea.status || "Watching";
+      document.getElementById("ideaAssetType").value = selectedIdea.assetType || "Stock";
+      document.getElementById("ideaStrategy").value = selectedIdea.strategy || "";
+      document.getElementById("ideaPriority").value = selectedIdea.priority || "Normal";
+      document.getElementById("ideaCatalystDate").value = selectedIdea.catalystDate || "";
+      document.getElementById("ideaTags").value = selectedIdea.tags || "";
+      document.getElementById("ideaEntry").value = selectedIdea.entryIdea || "";
+      document.getElementById("ideaRiskReward").value = selectedIdea.riskReward || "";
+      document.getElementById("ideaStop").value = selectedIdea.stop || "";
+      document.getElementById("ideaTarget").value = selectedIdea.target || "";
+      document.getElementById("ideaThesis").value = selectedIdea.thesis || "";
+      document.getElementById("ideaNotes").value = selectedIdea.notes || "";
+      document.getElementById("ideaLessons").value = selectedIdea.lessons || "";
+      document.getElementById("ideaPinned").checked = Boolean(selectedIdea.pinned);
+    }
+
+    function createNewIdea() {
+      const idea = createIdeaTemplate();
+      ideas.unshift(idea);
+      selectedIdeaId = idea.id;
+      saveIdeas();
+      setActiveTab("ideas");
+      renderIdeasWorkspace();
+      document.getElementById("ideaTitle").focus();
+    }
+
+    function selectIdea(id) {
+      selectedIdeaId = id;
+      renderIdeasWorkspace();
+    }
+    window.selectIdea = selectIdea;
+
+    function deleteSelectedIdea() {
+      const selectedIdea = getSelectedIdea();
+      if (!selectedIdea) return;
+      const ok = confirm(`Delete idea "${selectedIdea.title || "Untitled idea"}"?`);
+      if (!ok) return;
+      ideas = ideas.filter((idea) => idea.id !== selectedIdea.id);
+      selectedIdeaId = ideas.length ? ideas[0].id : null;
+      saveIdeas();
+      renderIdeasWorkspace();
+      showToast("ok", "Idea deleted.");
+    }
+
+    function syncSelectedIdeaFromForm(rerender = false) {
+      const selectedIdea = getSelectedIdea();
+      if (!selectedIdea) return;
+      selectedIdea.title = document.getElementById("ideaTitle").value.trim();
+      selectedIdea.symbol = document.getElementById("ideaSymbol").value.trim().toUpperCase();
+      selectedIdea.status = document.getElementById("ideaStatus").value;
+      selectedIdea.assetType = document.getElementById("ideaAssetType").value;
+      selectedIdea.strategy = document.getElementById("ideaStrategy").value.trim();
+      selectedIdea.priority = document.getElementById("ideaPriority").value;
+      selectedIdea.catalystDate = document.getElementById("ideaCatalystDate").value;
+      selectedIdea.tags = document.getElementById("ideaTags").value.trim();
+      selectedIdea.entryIdea = document.getElementById("ideaEntry").value.trim();
+      selectedIdea.riskReward = document.getElementById("ideaRiskReward").value.trim();
+      selectedIdea.stop = document.getElementById("ideaStop").value.trim();
+      selectedIdea.target = document.getElementById("ideaTarget").value.trim();
+      selectedIdea.thesis = document.getElementById("ideaThesis").value;
+      selectedIdea.notes = document.getElementById("ideaNotes").value;
+      selectedIdea.lessons = document.getElementById("ideaLessons").value;
+      selectedIdea.pinned = document.getElementById("ideaPinned").checked;
+      selectedIdea.updatedAt = new Date().toISOString();
+      saveIdeas();
+      el.ideaEditorTitle.textContent = selectedIdea.title || "Trade Idea";
+      if (rerender) renderIdeasWorkspace();
     }
 
     async function loginWithCredentials(userId, password) {
@@ -1917,6 +2297,17 @@
       });
     }
 
+    function wireIdeasEvents() {
+      el.journalTabBtn.addEventListener("click", () => setActiveTab("journal"));
+      el.ideasTabBtn.addEventListener("click", () => setActiveTab("ideas"));
+      document.getElementById("newIdeaBtn").addEventListener("click", createNewIdea);
+      document.getElementById("deleteIdeaBtn").addEventListener("click", deleteSelectedIdea);
+      el.ideaSearchInput.addEventListener("input", renderIdeasWorkspace);
+      el.ideaStatusFilter.addEventListener("change", renderIdeasWorkspace);
+      el.ideaForm.addEventListener("input", () => syncSelectedIdeaFromForm(false));
+      el.ideaForm.addEventListener("change", () => syncSelectedIdeaFromForm(true));
+    }
+
     function wireAuthEvents() {
       const loginForm = document.getElementById("loginForm");
       const loginSubmitBtn = document.getElementById("loginSubmitBtn");
@@ -1964,6 +2355,8 @@
       unlockApp();
       loadTrades();
       refreshAll();
+      renderIdeasWorkspace();
+      setActiveTab(activeTab);
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
         if (!syncResult || !syncResult.ok) {
@@ -2001,7 +2394,10 @@
       }, 15000);
     }
 
+    loadIdeas();
+    setActiveTab("journal");
     wireEvents();
+    wireIdeasEvents();
     wireAuthEvents();
     initializeCloudSync();
   </script>
