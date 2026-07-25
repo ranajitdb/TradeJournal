@@ -23,7 +23,15 @@
           <button id="exportJsonBtn" class="px-3 py-2 text-sm rounded bg-slate-700 text-white hover:bg-slate-800">Backup JSON</button>
           <button id="restoreJsonBtn" class="px-3 py-2 text-sm rounded bg-amber-600 text-white hover:bg-amber-700">Restore JSON</button>
           <button id="clearAllBtn" class="px-3 py-2 text-sm rounded bg-rose-600 text-white hover:bg-rose-700">Clear All</button>
-          <a id="logoutLink" href="#" class="px-3 py-2 text-sm rounded text-blue-700 hover:text-blue-900 underline underline-offset-2">Logout</a>
+          <div class="basis-full flex justify-end">
+            <button id="logoutLink" type="button" title="Logout" aria-label="Logout" class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
+          </div>
           <input id="restoreJsonInput" type="file" accept=".json,application/json" class="hidden" />
         </div>
       </div>
