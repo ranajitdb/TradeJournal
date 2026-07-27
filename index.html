@@ -21,6 +21,7 @@
               <button id="journalTabBtn" class="px-4 py-2 text-sm rounded-md bg-slate-900 text-white">Journal</button>
               <button id="ideasTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Ideas & Notes</button>
               <button id="watchlistsTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Watch Lists</button>
+              <button id="notesTabBtn" class="px-4 py-2 text-sm rounded-md text-slate-600 hover:bg-slate-100">Notes</button>
             </div>
             <button id="logoutLink" type="button" title="Logout" aria-label="Logout" class="inline-flex items-center justify-center w-9 h-9 rounded-full border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 hover:text-slate-900">
               <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -535,6 +536,44 @@
         </div>
       </section>
     </section>
+
+    <section id="notesTab" class="hidden space-y-6">
+      <section class="bg-white rounded-lg border p-4">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="font-semibold">Market Commentary</h2>
+          <span id="notesCharCount" class="text-xs text-slate-500">0 / 5000</span>
+        </div>
+        <textarea id="notesComposerInput" maxlength="5000" rows="4" placeholder="Post market notes as the day progresses..." class="mt-3 w-full border rounded px-3 py-2 text-sm"></textarea>
+        <div class="mt-3 flex justify-end">
+          <button id="notesPostBtn" class="px-3 py-2 text-sm rounded bg-slate-900 text-white hover:bg-slate-950">Post</button>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div>
+            <label class="text-xs text-slate-500">Search content</label>
+            <input id="notesSearchInput" type="text" placeholder="Search notes..." class="w-full border rounded px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-500">From date</label>
+            <input id="notesDateFrom" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+          </div>
+          <div>
+            <label class="text-xs text-slate-500">To date</label>
+            <input id="notesDateTo" type="date" class="w-full border rounded px-2 py-2 text-sm" />
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-white rounded-lg border p-4">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="font-semibold">Feed</h2>
+          <span id="notesCountBadge" class="text-xs px-2 py-1 rounded bg-slate-100">0 posts</span>
+        </div>
+        <div id="notesFeed" class="space-y-3"></div>
+      </section>
+    </section>
   </div>
 
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
@@ -719,8 +758,10 @@
     const SESSION_TOKEN_STORAGE = "tradelog_session_token";
     const IDEAS_CACHE_KEY = "tradelog_ideas_cache";
     const WATCHLISTS_CACHE_KEY = "tradelog_watchlists_cache";
+    const MARKET_NOTES_CACHE_KEY = "tradelog_market_notes_cache";
     let ideasSyncTimer = null;
     let watchlistsSyncTimer = null;
+    let notesSyncTimer = null;
     const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbw_KufTv5bIeWrZlQvrlqsra3TJZ5plLbBxrueAZ42NqqdifqT_9bZw1hx6Gx8rmlq9EA/exec";
     const GAS_SHEET_NAME = "TradeLog";
     const DEFAULT_FUTURES_MULTIPLIERS = {
@@ -755,6 +796,7 @@
     let selectedIdeaId = null;
     let watchlists = [];
     let selectedWatchlistId = null;
+    let marketNotes = [];
 
     const el = {
       appRoot: document.getElementById("appRoot"),
@@ -762,9 +804,11 @@
       journalTab: document.getElementById("journalTab"),
       ideasTab: document.getElementById("ideasTab"),
       watchlistsTab: document.getElementById("watchlistsTab"),
+      notesTab: document.getElementById("notesTab"),
       journalTabBtn: document.getElementById("journalTabBtn"),
       ideasTabBtn: document.getElementById("ideasTabBtn"),
       watchlistsTabBtn: document.getElementById("watchlistsTabBtn"),
+      notesTabBtn: document.getElementById("notesTabBtn"),
       tradeTableBody: document.getElementById("tradeTableBody"),
       closedPairTableBody: document.getElementById("closedPairTableBody"),
       openPairTableBody: document.getElementById("openPairTableBody"),
@@ -814,7 +858,15 @@
       watchlistEditor: document.getElementById("watchlistEditor"),
       watchlistEditorTitle: document.getElementById("watchlistEditorTitle"),
       watchlistSearchInput: document.getElementById("watchlistSearchInput"),
-      watchlistItemsBody: document.getElementById("watchlistItemsBody")
+      watchlistItemsBody: document.getElementById("watchlistItemsBody"),
+      notesComposerInput: document.getElementById("notesComposerInput"),
+      notesCharCount: document.getElementById("notesCharCount"),
+      notesPostBtn: document.getElementById("notesPostBtn"),
+      notesSearchInput: document.getElementById("notesSearchInput"),
+      notesDateFrom: document.getElementById("notesDateFrom"),
+      notesDateTo: document.getElementById("notesDateTo"),
+      notesCountBadge: document.getElementById("notesCountBadge"),
+      notesFeed: document.getElementById("notesFeed")
     };
 
     function uid() {
@@ -1196,18 +1248,22 @@
     }
 
     function setActiveTab(tab) {
-      activeTab = ["journal", "ideas", "watchlists"].includes(tab) ? tab : "journal";
+      activeTab = ["journal", "ideas", "watchlists", "notes"].includes(tab) ? tab : "journal";
       const isJournal = activeTab === "journal";
       const isIdeas = activeTab === "ideas";
       const isWatchlists = activeTab === "watchlists";
+      const isNotes = activeTab === "notes";
       el.journalTab.classList.toggle("hidden", !isJournal);
       el.ideasTab.classList.toggle("hidden", !isIdeas);
       el.watchlistsTab.classList.toggle("hidden", !isWatchlists);
+      el.notesTab.classList.toggle("hidden", !isNotes);
       el.journalTabBtn.className = `px-4 py-2 text-sm rounded-md ${isJournal ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
       el.ideasTabBtn.className = `px-4 py-2 text-sm rounded-md ${isIdeas ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
       el.watchlistsTabBtn.className = `px-4 py-2 text-sm rounded-md ${isWatchlists ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
+      el.notesTabBtn.className = `px-4 py-2 text-sm rounded-md ${isNotes ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"}`;
       if (isIdeas) renderIdeasWorkspace();
       if (isWatchlists) renderWatchlistsWorkspace();
+      if (isNotes) renderNotesWorkspace();
     }
 
     function renderWatchlistsWorkspace() {
@@ -1374,6 +1430,136 @@
       item.updatedAt = new Date().toISOString();
       selected.updatedAt = new Date().toISOString();
       saveWatchlists();
+    }
+
+    function loadMarketNotes() {
+      try {
+        const raw = localStorage.getItem(MARKET_NOTES_CACHE_KEY);
+        marketNotes = raw ? JSON.parse(raw) : [];
+        if (!Array.isArray(marketNotes)) marketNotes = [];
+      } catch (_) {
+        marketNotes = [];
+      }
+    }
+
+    function saveMarketNotes() {
+      localStorage.setItem(MARKET_NOTES_CACHE_KEY, JSON.stringify(marketNotes));
+      scheduleMarketNotesSync();
+    }
+
+    function scheduleMarketNotesSync() {
+      if (notesSyncTimer) clearTimeout(notesSyncTimer);
+      notesSyncTimer = setTimeout(() => syncMarketNotesToGAS({ silent: true }), 800);
+    }
+
+    async function syncMarketNotesToGAS(options = {}) {
+      const { silent = false } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      const payload = {
+        action: "replaceAllMarketNotes",
+        sessionToken: token,
+        notes: marketNotes.map((n) => ({
+          id: n.id,
+          content: String(n.content || "").slice(0, 5000),
+          createdAt: n.createdAt || "",
+          updatedAt: n.updatedAt || ""
+        }))
+      };
+      try {
+        const response = await fetch(GAS_WEB_APP_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || "Notes sync failed");
+        if (!silent) showToast("ok", "Notes synced.");
+      } catch (err) {
+        if (!silent) showToast("error", `Notes sync failed: ${err.message}`);
+      }
+    }
+
+    async function loadMarketNotesFromGAS(options = {}) {
+      const { silent = true } = options;
+      const token = getSessionToken();
+      if (!token) return;
+      try {
+        const url = `${GAS_WEB_APP_URL}?action=loadMarketNotes&sessionToken=${encodeURIComponent(token)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || "Notes load failed");
+        marketNotes = Array.isArray(data.notes) ? data.notes : [];
+        localStorage.setItem(MARKET_NOTES_CACHE_KEY, JSON.stringify(marketNotes));
+        renderNotesWorkspace();
+        if (!silent) showToast("ok", `Loaded ${marketNotes.length} post(s).`);
+      } catch (err) {
+        if (!silent) showToast("error", `Notes load failed: ${err.message}`);
+      }
+    }
+
+    function updateNotesCharCount() {
+      const text = String(el.notesComposerInput.value || "");
+      el.notesCharCount.textContent = `${text.length} / 5000`;
+      el.notesCharCount.className = `text-xs ${text.length > 4800 ? "text-rose-600" : "text-slate-500"}`;
+    }
+
+    function createMarketNote() {
+      const content = String(el.notesComposerInput.value || "").trim();
+      if (!content) {
+        showToast("error", "Write a note before posting.");
+        return;
+      }
+      if (content.length > 5000) {
+        showToast("error", "Note cannot exceed 5000 characters.");
+        return;
+      }
+      const now = new Date().toISOString();
+      marketNotes.unshift({ id: uid(), content, createdAt: now, updatedAt: now });
+      el.notesComposerInput.value = "";
+      updateNotesCharCount();
+      saveMarketNotes();
+      renderNotesWorkspace();
+      showToast("ok", "Note posted.");
+    }
+
+    function deleteMarketNote(id) {
+      marketNotes = marketNotes.filter((n) => n.id !== id);
+      saveMarketNotes();
+      renderNotesWorkspace();
+      showToast("ok", "Note deleted.");
+    }
+    window.deleteMarketNote = deleteMarketNote;
+
+    function renderNotesWorkspace() {
+      const q = String(el.notesSearchInput.value || "").trim().toLowerCase();
+      const from = el.notesDateFrom.value ? new Date(`${el.notesDateFrom.value}T00:00:00`) : null;
+      const to = el.notesDateTo.value ? new Date(`${el.notesDateTo.value}T23:59:59`) : null;
+      const filtered = marketNotes
+        .filter((n) => {
+          const content = String(n.content || "");
+          const when = new Date(n.createdAt || n.updatedAt || 0);
+          if (from && when < from) return false;
+          if (to && when > to) return false;
+          if (q && !content.toLowerCase().includes(q)) return false;
+          return true;
+        })
+        .sort((a, b) => new Date(b.createdAt || b.updatedAt || 0) - new Date(a.createdAt || a.updatedAt || 0));
+
+      el.notesCountBadge.textContent = `${filtered.length} post${filtered.length === 1 ? "" : "s"}`;
+      if (!filtered.length) {
+        el.notesFeed.innerHTML = `<div class="text-sm text-slate-500 py-8 text-center">No notes match your search.</div>`;
+        return;
+      }
+      el.notesFeed.innerHTML = filtered.map((n) => `
+        <article class="border rounded-lg p-3 bg-white">
+          <div class="flex items-center justify-between text-xs text-slate-500 mb-2">
+            <span>${formatDate(n.createdAt || n.updatedAt)}</span>
+            <button type="button" class="text-rose-600 hover:text-rose-800" onclick="deleteMarketNote('${n.id}')">Delete</button>
+          </div>
+          <div class="text-sm whitespace-pre-wrap break-words">${escapeHtmlText(n.content || "")}</div>
+        </article>
+      `).join("");
     }
 
     function escapeHtmlText(value) {
@@ -2974,6 +3160,15 @@
       });
     }
 
+    function wireNotesEvents() {
+      el.notesTabBtn.addEventListener("click", () => setActiveTab("notes"));
+      el.notesComposerInput.addEventListener("input", updateNotesCharCount);
+      el.notesPostBtn.addEventListener("click", createMarketNote);
+      el.notesSearchInput.addEventListener("input", renderNotesWorkspace);
+      el.notesDateFrom.addEventListener("change", renderNotesWorkspace);
+      el.notesDateTo.addEventListener("change", renderNotesWorkspace);
+    }
+
     function wireAuthEvents() {
       const loginForm = document.getElementById("loginForm");
       const loginSubmitBtn = document.getElementById("loginSubmitBtn");
@@ -3022,9 +3217,12 @@
       loadTrades();
       loadIdeas();
       loadWatchlists();
+      loadMarketNotes();
       refreshAll();
       renderIdeasWorkspace();
       renderWatchlistsWorkspace();
+      renderNotesWorkspace();
+      updateNotesCharCount();
       setActiveTab(activeTab);
       if (hasPendingSync()) {
         const syncResult = await syncToGoogleSheet({ silent: true });
@@ -3059,6 +3257,7 @@
       }
       await loadIdeasFromGAS({ silent: true });
       await loadWatchlistsFromGAS({ silent: true });
+      await loadMarketNotesFromGAS({ silent: true });
       if (cloudSyncIntervalId) clearInterval(cloudSyncIntervalId);
       cloudSyncIntervalId = setInterval(() => {
         if (hasPendingSync()) syncToGoogleSheet({ silent: true });
@@ -3069,6 +3268,7 @@
     wireEvents();
     wireIdeasEvents();
     wireWatchlistsEvents();
+    wireNotesEvents();
     wireAuthEvents();
     initializeCloudSync();
   </script>
